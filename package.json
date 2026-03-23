@@ -1,5 +1,5 @@
 {
-  "name": "wellread-mcp",
+  "name": "wellread",
   "version": "0.1.0",
   "description": "Collective research memory for AI agents. Search before you research, contribute when you're done.",
   "type": "module",
@@ -12,6 +12,9 @@
     "start": "node dist/server.js",
     "dev": "tsx src/server.ts"
   },
+  "files": [
+    "bin/"
+  ],
   "engines": {
     "node": ">=18.0.0"
   },

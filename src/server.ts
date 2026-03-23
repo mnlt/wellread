@@ -6,10 +6,17 @@ import { createMcpExpressApp } from "@modelcontextprotocol/sdk/server/express.js
 import { isInitializeRequest } from "@modelcontextprotocol/sdk/types.js";
 import { z } from "zod";
 import { generateEmbedding } from "./embeddings.js";
-import { hybridSearch, insertResearch, registerUser, getUserByApiKey, logSearch } from "./db.js";
+import { hybridSearch, insertResearch, registerUser, getUserByApiKey, logSearch, getNetworkStats, getUserContributionCount, supabase } from "./db.js";
 import type { Request, Response } from "express";
 
 const PORT = parseInt(process.env.PORT || "3000", 10);
+
+// --- Impact calculation (per token: 0.005 mL water) ---
+function waterSaved(tokens: number): string {
+  const ml = tokens * 0.005;
+  if (ml < 1000) return `${ml.toFixed(0)} mL of water`;
+  return `${(ml / 1000).toFixed(1)} L of water`;
+}
 
 // --- Auth middleware: extract user from API key ---
 async function authenticateRequest(req: Request): Promise<string | null> {
@@ -72,11 +79,12 @@ Example: User asks "how do I send emails with Resend in my Next.js 15 app deploy
         });
 
         if (results.length === 0) {
+          const stats = await getNetworkStats();
           return {
             content: [
               {
                 type: "text" as const,
-                text: "No prior research found. You MUST:\n1. Do live research (web search, fetch docs)\n2. Call the 'contribute' tool to save your findings BEFORE responding to the user\nThis ensures the next person with a similar question starts from your work, not from zero.",
+                text: `No one has researched this... yet. You'll be the first.\n\nYou MUST:\n1. Do live research (web search, fetch docs)\n2. Call the 'contribute' tool BEFORE responding to the user\n\n🌍 **No one has been here... yet**\nYour research will be the first\nWellread contributors saved ${waterSaved(stats.total_tokens_saved)} in ${stats.days_active}d`,
               },
             ],
           };
@@ -91,14 +99,21 @@ Example: User asks "how do I send emails with Resend in my Next.js 15 app deploy
         const matchType = topSimilarity >= 0.75 ? "full" : "partial";
 
         const warning = matchType === "partial"
-          ? "\n\n⚠ PARTIAL MATCH. You MUST:\n1. Fetch at least one live source to fill gaps\n2. Call the 'contribute' tool to save your findings BEFORE responding to the user\nSkipping step 2 wastes the research for future queries."
+          ? "\n\n⚠ PARTIAL MATCH. You MUST:\n1. Fetch at least one live source to fill gaps\n2. Call the 'contribute' tool BEFORE responding\nSkipping step 2 wastes the research for future queries."
           : "";
+
+        const tokensSavedThisQuery = results.reduce((sum, r) => sum + (r.raw_tokens - r.response_tokens), 0);
+        const [{ data: topResearch }, stats] = await Promise.all([
+          supabase.from("research").select("match_count").eq("id", results[0].id).single(),
+          getNetworkStats(),
+        ]);
+        const matchCount = topResearch?.match_count ?? 1;
 
         return {
           content: [
             {
               type: "text" as const,
-              text: `Found ${results.length} prior research entries (match: ${matchType}, similarity: ${topSimilarity.toFixed(3)}):\n\n${formatted.join("\n\n")}${warning}`,
+              text: `Found ${results.length} prior research entries (match: ${matchType}, similarity: ${topSimilarity.toFixed(3)}):\n\n${formatted.join("\n\n")}${warning}\n\n🌍 **Already figured out**\n${waterSaved(tokensSavedThisQuery)} saved\nWellread contributors saved ${waterSaved(stats.total_tokens_saved)} in ${stats.days_active}d`,
             },
           ],
         };
@@ -162,6 +177,18 @@ You (the LLM) must generate:
     },
     async ({ search_surface, content, sources, tags, raw_tokens, response_tokens, replaces_id }) => {
       try {
+        // Quality gate: reject contributions without real research
+        if (raw_tokens === 0 || sources.length === 0) {
+          return {
+            content: [
+              {
+                type: "text" as const,
+                text: "Rejected: contributions require real research. You must have fetched external sources (raw_tokens > 0, sources non-empty). Training data or user-provided info without verification cannot be contributed.",
+              },
+            ],
+          };
+        }
+
         const embedding = await generateEmbedding(search_surface);
 
         const id = await insertResearch({
@@ -176,11 +203,18 @@ You (the LLM) must generate:
           replaces_id,
         });
 
+        const stats = await getNetworkStats();
+        const perMatchWater = waterSaved(Math.max(0, raw_tokens - response_tokens));
+
+        const msg = replaces_id
+          ? `🌍 **Built on prior research**\nEvery future match saves ${perMatchWater}\nWellread contributors saved ${waterSaved(stats.total_tokens_saved)} in ${stats.days_active}d`
+          : `🌍 **First one here**\nEvery future match saves ${perMatchWater}\nWellread contributors saved ${waterSaved(stats.total_tokens_saved)} in ${stats.days_active}d`;
+
         return {
           content: [
             {
               type: "text" as const,
-              text: `Research ${replaces_id ? "updated" : "saved"} (id: ${id}).${replaces_id ? ` Replaces: ${replaces_id}.` : ""} ${raw_tokens} raw → ${response_tokens} saved. Future agents save ~${raw_tokens - response_tokens} tokens.`,
+              text: msg,
             },
           ],
         };

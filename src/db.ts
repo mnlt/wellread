@@ -60,6 +60,42 @@ export async function registerUser(name?: string, clients?: string[]): Promise<U
   return data[0];
 }
 
+export interface NetworkStats {
+  total_users: number;
+  total_contributions: number;
+  total_tokens_saved: number;
+}
+
+export async function getNetworkStats(): Promise<NetworkStats & { days_active: number }> {
+  const [users, contributions, savings, oldest] = await Promise.all([
+    supabase.from("users").select("id", { count: "exact", head: true }),
+    supabase.from("research").select("id", { count: "exact", head: true }).eq("is_current", true),
+    supabase.from("searches").select("tokens_saved").gt("tokens_saved", 0),
+    supabase.from("research").select("created_at").order("created_at", { ascending: true }).limit(1),
+  ]);
+
+  const totalTokensSaved = (savings.data ?? []).reduce((sum, r) => sum + r.tokens_saved, 0);
+  const firstDate = oldest.data?.[0]?.created_at ? new Date(oldest.data[0].created_at) : new Date();
+  const daysActive = Math.max(1, Math.ceil((Date.now() - firstDate.getTime()) / (1000 * 60 * 60 * 24)));
+
+  return {
+    total_users: users.count ?? 0,
+    total_contributions: contributions.count ?? 0,
+    total_tokens_saved: totalTokensSaved,
+    days_active: daysActive,
+  };
+}
+
+export async function getUserContributionCount(userId: string): Promise<number> {
+  const { count } = await supabase
+    .from("research")
+    .select("id", { count: "exact", head: true })
+    .eq("user_id", userId)
+    .eq("is_current", true);
+
+  return count ?? 0;
+}
+
 export async function getUserByApiKey(apiKey: string): Promise<User | null> {
   const { data, error } = await supabase
     .from("users")
