@@ -1,0 +1,33 @@
+{
+  "name": "wellread-mcp",
+  "version": "0.1.0",
+  "description": "Collective research memory for AI agents. Search before you research, contribute when you're done.",
+  "type": "module",
+  "main": "src/server.ts",
+  "bin": {
+    "wellread": "./bin/install.mjs"
+  },
+  "scripts": {
+    "build": "tsc",
+    "start": "node dist/server.js",
+    "dev": "tsx src/server.ts"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  },
+  "license": "MIT",
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.27.1",
+    "@supabase/supabase-js": "^2.99.3",
+    "dotenv": "^17.3.1",
+    "express": "^5.2.1",
+    "openai": "^6.32.0",
+    "zod": "^4.3.6"
+  },
+  "devDependencies": {
+    "@types/express": "^5.0.6",
+    "@types/node": "^25.5.0",
+    "tsx": "^4.21.0",
+    "typescript": "^5.9.3"
+  }
+}
