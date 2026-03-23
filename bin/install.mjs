@@ -6,7 +6,7 @@ import { homedir } from "os";
 import { execSync } from "child_process";
 
 const HOME = homedir();
-const SERVER_URL = process.env.WELLREAD_URL || "https://wellread.dev/mcp";
+const SERVER_URL = process.env.WELLREAD_URL || "https://wellread-production.up.railway.app/mcp";
 
 // ── Styled output ──────────────────────────────────────
 
