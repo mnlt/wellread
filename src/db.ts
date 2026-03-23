@@ -26,6 +26,7 @@ export interface ResearchEntry {
   user_id: string;
   content: string;
   sources: string[];
+  gaps: string[];
   search_surface: string;
   tags: string[];
   raw_tokens: number;
@@ -198,6 +199,7 @@ export async function insertResearch(entry: ResearchEntry): Promise<string> {
       user_id: entry.user_id,
       content: entry.content,
       sources: entry.sources,
+      gaps: entry.gaps,
       search_surface: entry.search_surface,
       tags: entry.tags,
       raw_tokens: entry.raw_tokens,

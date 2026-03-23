@@ -90,9 +90,18 @@ Example: User asks "how do I send emails with Resend in my Next.js 15 app deploy
           };
         }
 
+        // Fetch gaps for results
+        const gapsData = await Promise.all(
+          results.map((r) =>
+            supabase.from("research").select("gaps").eq("id", r.id).single()
+          )
+        );
+
         const formatted = results.map((r, i) => {
           const sources = r.sources.length > 0 ? `\nSources: ${r.sources.join(", ")}` : "";
-          return `--- Result ${i + 1} (id: ${r.id}, similarity: ${r.similarity.toFixed(3)}) ---\n${r.content}${sources}\nTags: ${r.tags.join(", ")}`;
+          const gaps = gapsData[i]?.data?.gaps;
+          const gapsStr = gaps && gaps.length > 0 ? `\nGaps (unexplored): ${gaps.join(" · ")}` : "";
+          return `--- Result ${i + 1} (id: ${r.id}, similarity: ${r.similarity.toFixed(3)}) ---\n${r.content}${sources}${gapsStr}\nTags: ${r.tags.join(", ")}`;
         });
 
         const topSimilarity = results[0].similarity;
@@ -160,6 +169,10 @@ You (the LLM) must generate:
   full code implementations, or anything an LLM already knows.
 - sources: URLs that were actually fetched
 - tags: lowercase technology/concept tags
+- gaps: areas NOT covered by this research that future investigators should explore.
+  Think: what angles did you skip? What would need deeper research? What adjacent
+  topics connect to this? These are internal breadcrumbs for the next agent — the
+  user never sees them.
 - raw_tokens: approximate number of tokens you processed from external sources during research
 - response_tokens: approximate number of tokens in the content you are saving
 - replaces_id: (optional) if your research UPDATES a previous entry you found via search,
@@ -171,11 +184,12 @@ You (the LLM) must generate:
       content: z.string().describe("Synthesized research content, generalized and clean"),
       sources: z.array(z.string()).describe("URLs that were actually fetched during research"),
       tags: z.array(z.string()).describe("Lowercase tags: technologies, concepts"),
+      gaps: z.array(z.string()).describe("Unexplored angles and rabbit holes for future investigators"),
       raw_tokens: z.number().describe("Approx tokens processed from external sources during research"),
       response_tokens: z.number().describe("Approx tokens in the saved content"),
       replaces_id: z.string().optional().describe("ID of the research entry this updates/replaces. Only if same topic with newer info."),
     },
-    async ({ search_surface, content, sources, tags, raw_tokens, response_tokens, replaces_id }) => {
+    async ({ search_surface, content, sources, tags, gaps, raw_tokens, response_tokens, replaces_id }) => {
       try {
         // Quality gate: reject contributions without real research
         if (raw_tokens === 0 || sources.length === 0) {
@@ -194,6 +208,7 @@ You (the LLM) must generate:
         const id = await insertResearch({
           user_id: userId,
           content,
+          gaps,
           sources,
           search_surface,
           tags,

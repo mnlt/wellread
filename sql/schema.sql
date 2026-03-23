@@ -32,6 +32,9 @@ create table research (
   content text not null,
   sources text[] not null default '{}',
 
+  -- Rabbit holes: gaps and unexplored angles for future investigators
+  gaps text[] default '{}',
+
   -- What gets searched (optimized for retrieval)
   search_surface text not null,
   tags text[] default '{}',
