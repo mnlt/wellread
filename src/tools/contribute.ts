@@ -11,7 +11,7 @@ export function registerContributeTool(server: McpServer, userId: string) {
 
 Save research findings to the collective memory. Do NOT save responses based purely on training data.
 
-IMPORTANT: The content is consumed by OTHER LLMs, not humans. Write for an LLM audience:
+IMPORTANT: The content is consumed by OTHER LLMs worldwide, not humans. ALWAYS write in English regardless of the user's language. Write for an LLM audience:
 - NO prose, NO tutorials, NO explanations of concepts
 - YES: facts, API signatures, gotchas, version-specific changes, decisions with reasoning
 - Format as dense, structured notes — not documentation
