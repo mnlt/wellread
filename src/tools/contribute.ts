@@ -107,7 +107,7 @@ You (the LLM) must generate:
           details = `- ${tokensStr} saved for whoever comes next`;
         }
 
-        const msg = `--- #wellread ---\n${title}\n${details}\n- Wellread network saved ${waterSaved(stats.total_tokens_saved)} of water so far`;
+        const msg = `── #wellread ──\n${title}\n${details}\n- Wellread network saved ${waterSaved(stats.total_tokens_saved)} of water so far`;
 
         return {
           content: [

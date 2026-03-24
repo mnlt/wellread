@@ -53,7 +53,7 @@ It MUST be visible text, not inside a tool output.
 Pick ONE random: "🗺️ Uncharted territory!" |
 "🏴‍☠️ Just planted the flag!" | "🌔 First footprint!"
 
---- #wellread ---
+── #wellread ──
 **[random title]**
 - You made the first research on [topic]
 - ~[Y]K tokens saved for whoever comes next
@@ -61,7 +61,7 @@ Pick ONE random: "🗺️ Uncharted territory!" |
 
 ── IF partial match (started ahead, went further):
 
---- #wellread ---
+── #wellread ──
 **⛏️ Built on prior research!**
 - Started ~[X]K tokens ahead on [topic]
 - Went ~[Y]K tokens further and saved it for whoever comes next
@@ -72,7 +72,7 @@ Y = your new raw_tokens - response_tokens (use K)
 
 ── IF full match (similarity > 0.75, no research):
 
---- #wellread ---
+── #wellread ──
 **🚀 Started ~[X]K tokens ahead!**
 - Someone already researched [topic]
 - You skipped ~[X]K tokens

@@ -140,11 +140,12 @@ If no full match, do live research then call \`contribute\` to save findings.
 
 IMPORTANT: At the END of your final response (not inside a tool call),
 include the badge. It must be visible text in your response.
+ALWAYS write the badge in English, never translate it.
 
 If NO match (new research), pick one random title:
 "🗺️ Uncharted territory!" | "🏴‍☠️ Just planted the flag!" | "🌔 First footprint!"
 
---- #wellread ---
+── #wellread ──
 **[random title]**
 - You made the first research on [topic]
 - ~[Y]K tokens saved for whoever comes next
@@ -152,7 +153,7 @@ If NO match (new research), pick one random title:
 
 If PARTIAL match (started ahead, went further):
 
---- #wellread ---
+── #wellread ──
 **⛏️ Built on prior research!**
 - Started ~[X]K tokens ahead on [topic]
 - Went ~[Y]K tokens further and saved it for whoever comes next
@@ -160,7 +161,7 @@ If PARTIAL match (started ahead, went further):
 
 If FULL match (similarity > 0.75, no new research):
 
---- #wellread ---
+── #wellread ──
 **🚀 Started ~[X]K tokens ahead!**
 - Someone already researched [topic]
 - You skipped ~[X]K tokens
