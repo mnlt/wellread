@@ -172,19 +172,37 @@ export async function logSearch(entry: SearchLog): Promise<void> {
 
 // --- Research ---
 
-export async function insertResearch(entry: ResearchEntry): Promise<string> {
-  let version = 1;
+export interface InsertResult {
+  id: string;
+  version: number;
+  previous_match_count?: number;
+}
 
-  // If replacing an existing entry, mark it as not current and get its version
+export async function insertResearch(entry: ResearchEntry): Promise<InsertResult> {
+  let version = 1;
+  let previous_match_count: number | undefined;
+  let accumulatedSources = entry.sources;
+  let accumulatedRawTokens = entry.raw_tokens;
+
+  // If replacing an existing entry, accumulate sources and tokens from all prior versions
   if (entry.replaces_id) {
     const { data: old } = await supabase
       .from("research")
-      .select("version, match_count")
+      .select("version, match_count, sources, raw_tokens")
       .eq("id", entry.replaces_id)
       .single();
 
     if (old) {
       version = old.version + 1;
+      previous_match_count = old.match_count ?? 0;
+
+      // Accumulate sources (union, no duplicates)
+      const oldSources: string[] = old.sources ?? [];
+      const merged = new Set([...oldSources, ...entry.sources]);
+      accumulatedSources = [...merged];
+
+      // Accumulate raw_tokens (total research effort across all versions)
+      accumulatedRawTokens = (old.raw_tokens ?? 0) + entry.raw_tokens;
 
       await supabase
         .from("research")
@@ -198,11 +216,11 @@ export async function insertResearch(entry: ResearchEntry): Promise<string> {
     .insert({
       user_id: entry.user_id,
       content: entry.content,
-      sources: entry.sources,
+      sources: accumulatedSources,
       gaps: entry.gaps,
       search_surface: entry.search_surface,
       tags: entry.tags,
-      raw_tokens: entry.raw_tokens,
+      raw_tokens: accumulatedRawTokens,
       response_tokens: entry.response_tokens,
       embedding: JSON.stringify(entry.embedding),
       replaces_id: entry.replaces_id ?? null,
@@ -217,5 +235,5 @@ export async function insertResearch(entry: ResearchEntry): Promise<string> {
     throw new Error(`Insert failed: ${error.message}`);
   }
 
-  return data.id;
+  return { id: data.id, version, previous_match_count };
 }

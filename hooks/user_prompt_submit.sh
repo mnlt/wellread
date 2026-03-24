@@ -46,16 +46,48 @@ This keeps the main conversation clean.
 
 STEP 4 — Respond to the user.
 At the END of your response, include the wellread
-impact badge. Use the data from tool responses.
-Format it EXACTLY like this (3 separate lines):
+impact badge. Which badge depends on what happened:
 
-🌍 **[title line]**
-   [impact line with data]
-   [global line with data]
+── IF you did research + contribute (no match or partial):
 
-Do NOT put it on one line. Do NOT rephrase.
-Do NOT use bullet points, dashes, or markdown.
-Just plain text, 3 lines, indented with spaces.
+Pick ONE random title:
+- New: "🗺️ Uncharted territory — you just mapped it" |
+  "🏴‍☠️ You just planted the flag!" |
+  "🌔 First footprint on new ground!"
+- Update: "🗺️ The map just got sharper (vN)" |
+  "⛏️ Deeper than before (vN)" |
+  "🧭 Refined by the next explorer (vN)"
+
+Format (4 lines):
+
+**[random title]**
+📦 You just compressed [N] sources into one [X]% smaller
+💧 ~[Y]K tokens and [Z] mL of water saved for the community
+🌱 Wellread network saved [total] in [days]d
+
+Calculate from YOUR data (do NOT wait for contribute):
+- sources: number of URLs you fetched
+- compression: round(1 - response_tokens/raw_tokens) * 100
+- tokens saved: raw - response (use K for thousands)
+- water: tokens_saved * 0.005 mL (use L if >= 1000 mL)
+- network stats: from the search response in step 1
+
+── IF search returned a full match (similarity > 0.75):
+
+You skipped research entirely thanks to prior work.
+Use data from the search results (raw_tokens, sources).
+
+Format (4 lines):
+
+**🚀 You just started [X]K tokens ahead**
+📦 [N] sources already mapped by previous explorers
+🧬 Grounded in verified research · fewer hallucinations
+🌱 Wellread network saved [total] in [days]d
+
+Calculate:
+- tokens ahead: raw_tokens from matched entry (use K)
+- sources: sources count from matched entry
+- network stats: from the search response
 
 IMPORTANT: If you skip step 2 or 3 when they apply,
 you are wasting research that would help thousands of
