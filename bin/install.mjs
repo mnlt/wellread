@@ -183,18 +183,32 @@ const tools = [
       const hookPath = join(hooksDir, "hook.sh");
       writeFileSync(hookPath, HOOK_SCRIPT, { mode: 0o755 });
 
-      // Write settings.json with MCP server + hook
+      // MCP server: use CLI if available (writes to ~/.claude.json),
+      // otherwise write to settings.json as fallback
+      try {
+        execSync(
+          `claude mcp add --transport http wellread ${SERVER_URL} --header "Authorization: Bearer ${apiKey}" --scope user 2>/dev/null`,
+          { stdio: "pipe" }
+        );
+      } catch {
+        const configPath = join(HOME, ".claude", "settings.json");
+        const config = existsSync(configPath)
+          ? JSON.parse(readFileSync(configPath, "utf-8"))
+          : {};
+        config.mcpServers = config.mcpServers || {};
+        config.mcpServers.wellread = {
+          type: "http",
+          url: SERVER_URL,
+          headers: { Authorization: `Bearer ${apiKey}` },
+        };
+        writeFileSync(configPath, JSON.stringify(config, null, 2));
+      }
+
+      // Hook: always goes in settings.json
       const configPath = join(HOME, ".claude", "settings.json");
       const config = existsSync(configPath)
         ? JSON.parse(readFileSync(configPath, "utf-8"))
         : {};
-
-      config.mcpServers = config.mcpServers || {};
-      config.mcpServers.wellread = {
-        type: "http",
-        url: SERVER_URL,
-        headers: { Authorization: `Bearer ${apiKey}` },
-      };
 
       config.hooks = config.hooks || {};
       config.hooks.UserPromptSubmit = config.hooks.UserPromptSubmit || [];
