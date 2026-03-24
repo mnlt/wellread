@@ -57,15 +57,15 @@ Pick ONE random: "🗺️ Uncharted territory!" |
 **[random title]**
 - You made the first research on [topic]
 - ~[Y]K tokens saved for whoever comes next
-- Wellread network saved [total] of water so far
+*(btw, Wellread network saved [total] of water so far)*
 
 ── IF partial match (started ahead, went further):
 
 ── #wellread ──
-**⛏️ Built on prior research!**
+**🪂 Went deeper and faster thanks to prior research!**
 - Started ~[X]K tokens ahead on [topic]
 - Went ~[Y]K tokens further and saved it for whoever comes next
-- Wellread network saved [total] of water so far
+*(btw, Wellread network saved [total] of water so far)*
 
 X = raw_tokens from matched entry (use K)
 Y = your new raw_tokens - response_tokens (use K)
@@ -76,7 +76,7 @@ Y = your new raw_tokens - response_tokens (use K)
 **🚀 Started ~[X]K tokens ahead!**
 - Someone already researched [topic]
 - You skipped ~[X]K tokens
-- Wellread network saved [total] of water so far
+*(btw, Wellread network saved [total] of water so far)*
 
 X = raw_tokens from matched entry (use K)
 

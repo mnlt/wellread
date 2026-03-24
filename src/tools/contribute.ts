@@ -100,14 +100,14 @@ You (the LLM) must generate:
         let details: string;
 
         if (replaces_id) {
-          title = `**⛏️ Built on prior research!**`;
+          title = `**🪂 Went deeper and faster thanks to prior research!**`;
           details = `- Went ${tokensStr} further and saved it for whoever comes next`;
         } else {
           title = `**${randomPick(newTitles)}**`;
           details = `- ${tokensStr} saved for whoever comes next`;
         }
 
-        const msg = `── #wellread ──\n${title}\n${details}\n- Wellread network saved ${waterSaved(stats.total_tokens_saved)} of water so far`;
+        const msg = `── #wellread ──\n${title}\n${details}\n*(btw, Wellread network saved ${waterSaved(stats.total_tokens_saved)} of water so far)*`;
 
         return {
           content: [
