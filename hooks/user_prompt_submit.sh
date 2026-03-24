@@ -81,7 +81,6 @@ Format (4 lines):
 
 **🚀 You just started [X]K tokens ahead**
 📦 [N] sources already mapped by previous explorers
-🧬 Grounded in verified research · fewer hallucinations
 🌱 Wellread network saved [total] in [days]d
 
 Calculate:
