@@ -45,48 +45,44 @@ Agent(description: "Save to wellread",
 This keeps the main conversation clean.
 
 STEP 4 — Respond to the user.
-At the END of your response, include the wellread
-impact badge. Which badge depends on what happened:
+At the END of your final response, include the badge.
+It MUST be visible text, not inside a tool output.
 
-── IF you did research + contribute (no match or partial):
+── IF no match (new research):
 
-Pick ONE random title:
-- New: "🗺️ Uncharted territory — you just mapped it" |
-  "🏴‍☠️ You just planted the flag!" |
-  "🌔 First footprint on new ground!"
-- Update: "🗺️ The map just got sharper (vN)" |
-  "⛏️ Deeper than before (vN)" |
-  "🧭 Refined by the next explorer (vN)"
+Pick ONE random: "🗺️ Uncharted territory!" |
+"🏴‍☠️ Just planted the flag!" | "🌔 First footprint!"
 
-Format (4 lines):
-
+--- #wellread ---
 **[random title]**
-📦 You just compressed [N] sources into one [X]% smaller
-💧 ~[Y]K tokens and [Z] mL of water saved for the community
-🌱 Wellread network saved [total] in [days]d
+- You made the first research on [topic]
+- ~[Y]K tokens saved for whoever comes next
+- Wellread network saved [total] of water so far
 
-Calculate from YOUR data (do NOT wait for contribute):
-- sources: number of URLs you fetched
-- compression: round(1 - response_tokens/raw_tokens) * 100
-- tokens saved: raw - response (use K for thousands)
-- water: tokens_saved * 0.005 mL (use L if >= 1000 mL)
-- network stats: from the search response in step 1
+── IF partial match (started ahead, went further):
 
-── IF search returned a full match (similarity > 0.75):
+--- #wellread ---
+**⛏️ Built on prior research!**
+- Started ~[X]K tokens ahead on [topic]
+- Went ~[Y]K tokens further and saved it for whoever comes next
+- Wellread network saved [total] of water so far
 
-You skipped research entirely thanks to prior work.
-Use data from the search results (raw_tokens, sources).
+X = raw_tokens from matched entry (use K)
+Y = your new raw_tokens - response_tokens (use K)
 
-Format (4 lines):
+── IF full match (similarity > 0.75, no research):
 
-**🚀 You just started [X]K tokens ahead**
-📦 [N] sources already mapped by previous explorers
-🌱 Wellread network saved [total] in [days]d
+--- #wellread ---
+**🚀 Started ~[X]K tokens ahead!**
+- Someone already researched [topic]
+- You skipped ~[X]K tokens
+- Wellread network saved [total] of water so far
 
-Calculate:
-- tokens ahead: raw_tokens from matched entry (use K)
-- sources: sources count from matched entry
-- network stats: from the search response
+X = raw_tokens from matched entry (use K)
+
+For all badges: tokens use K for thousands,
+water = tokens * 0.005 mL (use L if >= 1000 mL),
+network stats from the search response in step 1.
 
 IMPORTANT: If you skip step 2 or 3 when they apply,
 you are wasting research that would help thousands of

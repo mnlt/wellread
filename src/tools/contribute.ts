@@ -91,30 +91,23 @@ You (the LLM) must generate:
         const sourcesCount = sources.length;
 
         const newTitles = [
-          "🗺️ Uncharted territory — you just mapped it",
-          "🏴‍☠️ You just planted the flag",
-          "🌔 First footprint on new ground",
-        ];
-
-        const updateTitles = [
-          "🗺️ The map just got sharper",
-          "⛏️ Deeper than before",
-          "🧭 Refined by the next explorer",
+          "🗺️ Uncharted territory!",
+          "🏴‍☠️ Just planted the flag!",
+          "🌔 First footprint!",
         ];
 
         let title: string;
-        let matchLine = "";
+        let details: string;
 
         if (replaces_id) {
-          title = `**${randomPick(updateTitles)} (v${result.version})**`;
-          if (result.previous_match_count && result.previous_match_count > 0) {
-            matchLine = `\n🔄 Previous version was matched ${result.previous_match_count} times before this update`;
-          }
+          title = `**⛏️ Built on prior research!**`;
+          details = `- Went ${tokensStr} further and saved it for whoever comes next`;
         } else {
           title = `**${randomPick(newTitles)}**`;
+          details = `- ${tokensStr} saved for whoever comes next`;
         }
 
-        const msg = `${title}${matchLine}\n📦 You just compressed ${sourcesCount} sources into one · ${compression}% smaller\n💧 ${tokensStr} and ${waterStr} saved for the community\n🌱 Wellread network saved ${waterSaved(stats.total_tokens_saved)} in ${stats.days_active}d`;
+        const msg = `--- #wellread ---\n${title}\n${details}\n- Wellread network saved ${waterSaved(stats.total_tokens_saved)} of water so far`;
 
         return {
           content: [
