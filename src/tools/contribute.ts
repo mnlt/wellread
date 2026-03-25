@@ -2,7 +2,40 @@ import { z } from "zod";
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { generateEmbedding } from "../embeddings.js";
 import { insertResearch, getNetworkStats, incrementUserContributions } from "../db.js";
-import { waterSaved, formatTokens, compressionPercent, randomPick } from "../utils.js";
+import { waterSaved, formatTokens, randomPick } from "../utils.js";
+
+async function processContributionAsync(
+  userId: string,
+  data: {
+    search_surface: string;
+    content: string;
+    sources: string[];
+    tags: string[];
+    gaps: string[];
+    raw_tokens: number;
+    response_tokens: number;
+    replaces_id?: string;
+  }
+): Promise<void> {
+  try {
+    const embedding = await generateEmbedding(data.search_surface);
+    await insertResearch({
+      user_id: userId,
+      content: data.content,
+      gaps: data.gaps,
+      sources: data.sources,
+      search_surface: data.search_surface,
+      tags: data.tags,
+      raw_tokens: data.raw_tokens,
+      response_tokens: data.response_tokens,
+      embedding,
+      replaces_id: data.replaces_id,
+    });
+    incrementUserContributions(userId, data.raw_tokens, data.response_tokens);
+  } catch (err) {
+    console.error("Async contribution processing error:", err);
+  }
+}
 
 export function registerContributeTool(server: McpServer, userId: string) {
   server.tool(
@@ -65,7 +98,7 @@ You (the LLM) must generate:
     },
     async ({ search_surface, content, sources, tags, gaps, raw_tokens, response_tokens, replaces_id }) => {
       try {
-        // Quality gate: reject contributions without real research
+        // Quality gate: reject contributions without real research (instant)
         if (raw_tokens === 0 || sources.length === 0) {
           return {
             content: [
@@ -77,31 +110,12 @@ You (the LLM) must generate:
           };
         }
 
-        const embedding = await generateEmbedding(search_surface);
-
-        const result = await insertResearch({
-          user_id: userId,
-          content,
-          gaps,
-          sources,
-          search_surface,
-          tags,
-          raw_tokens,
-          response_tokens,
-          embedding,
-          replaces_id,
-        });
-
-        // Increment user contribution count + token stats (async, non-blocking)
-        incrementUserContributions(userId, raw_tokens, response_tokens);
-
+        // Fetch network stats for badge (fast query, ~100ms)
         const stats = await getNetworkStats();
+
+        // Compute badge immediately from local data
         const tokensSaved = Math.max(0, raw_tokens - response_tokens);
-        const compression = compressionPercent(raw_tokens, response_tokens);
         const tokensStr = formatTokens(tokensSaved);
-        const waterStr = waterSaved(tokensSaved);
-        const gapsCount = gaps.length;
-        const sourcesCount = sources.length;
 
         const newTitles = [
           "🗺️ Uncharted territory!",
@@ -122,6 +136,13 @@ You (the LLM) must generate:
 
         const badge = `── #wellread ──\n${title}\n${details}\n*(btw, Wellread network saved ${waterSaved(stats.total_tokens_saved)} so far)*`;
 
+        // Fire off heavy work async (embedding generation + DB insert) — non-blocking
+        processContributionAsync(userId, {
+          search_surface, content, sources, tags, gaps,
+          raw_tokens, response_tokens, replaces_id,
+        });
+
+        // Return immediately with badge — no waiting for embedding or DB insert
         return {
           content: [
             {
