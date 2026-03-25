@@ -99,20 +99,35 @@ export async function getUserContributionCount(userId: string): Promise<number> 
 
 export async function incrementUserSearch(
   userId: string,
-  matchType: "none" | "partial" | "full"
+  matchType: "none" | "partial" | "full",
+  tokensSaved: number = 0
 ): Promise<void> {
   const { error } = await supabase.rpc("increment_user_search", {
     p_user_id: userId,
     p_match_type: matchType,
+    p_tokens_saved: tokensSaved,
   });
   if (error) console.error("User search increment error:", error);
 }
 
-export async function incrementUserContributions(userId: string): Promise<void> {
+export async function incrementUserContributions(
+  userId: string,
+  rawTokens: number = 0,
+  responseTokens: number = 0
+): Promise<void> {
   const { error } = await supabase.rpc("increment_user_contributions", {
     p_user_id: userId,
+    p_raw_tokens: rawTokens,
+    p_response_tokens: responseTokens,
   });
   if (error) console.error("User contribution increment error:", error);
+}
+
+export async function incrementCitations(researchIds: string[]): Promise<void> {
+  const { error } = await supabase.rpc("increment_citations", {
+    p_research_ids: researchIds,
+  });
+  if (error) console.error("Citations increment error:", error);
 }
 
 export async function getUserByApiKey(apiKey: string): Promise<User | null> {
@@ -146,12 +161,13 @@ export async function hybridSearch(
 
   const results: SearchResult[] = data ?? [];
 
-  // Increment match_count on matched research entries (async, non-blocking)
+  // Increment match_count on matched research entries + citations on owners (async, non-blocking)
   if (results.length > 0) {
     const ids = results.map((r) => r.id);
     supabase.rpc("increment_match_counts", { research_ids: ids }).then(({ error: incErr }) => {
       if (incErr) console.error("Match count increment error:", incErr);
     });
+    incrementCitations(ids);
   }
 
   return results;

@@ -19,6 +19,12 @@ create table users (
   full_match_count int not null default 0,
   contribution_count int not null default 0,
 
+  -- Token economics
+  tokens_searched bigint not null default 0,     -- tokens saved when searching (accumulated)
+  tokens_contributed bigint not null default 0,   -- raw_tokens from contributions (accumulated)
+  tokens_synthesized bigint not null default 0,   -- response_tokens from contributions (accumulated)
+  citations_count int not null default 0,         -- times your research appeared in others' searches
+
   created_at timestamptz default now()
 );
 
@@ -193,7 +199,8 @@ $$;
 -- 8. Increment user stats atomically
 create or replace function increment_user_search(
   p_user_id uuid,
-  p_match_type text  -- 'none', 'partial', 'full'
+  p_match_type text,  -- 'none', 'partial', 'full'
+  p_tokens_saved int default 0
 )
 returns void
 language sql
@@ -203,17 +210,40 @@ as $$
     search_count = search_count + 1,
     no_match_count = no_match_count + case when p_match_type = 'none' then 1 else 0 end,
     partial_match_count = partial_match_count + case when p_match_type = 'partial' then 1 else 0 end,
-    full_match_count = full_match_count + case when p_match_type = 'full' then 1 else 0 end
+    full_match_count = full_match_count + case when p_match_type = 'full' then 1 else 0 end,
+    tokens_searched = tokens_searched + p_tokens_saved
   where id = p_user_id;
 $$;
 
-create or replace function increment_user_contributions(p_user_id uuid)
+create or replace function increment_user_contributions(
+  p_user_id uuid,
+  p_raw_tokens int default 0,
+  p_response_tokens int default 0
+)
 returns void
 language sql
 as $$
   update users
-  set contribution_count = contribution_count + 1
+  set
+    contribution_count = contribution_count + 1,
+    tokens_contributed = tokens_contributed + p_raw_tokens,
+    tokens_synthesized = tokens_synthesized + p_response_tokens
   where id = p_user_id;
+$$;
+
+create or replace function increment_citations(p_research_ids uuid[])
+returns void
+language sql
+as $$
+  update users
+  set citations_count = citations_count + sub.cnt
+  from (
+    select user_id, count(*)::int as cnt
+    from research
+    where id = any(p_research_ids)
+    group by user_id
+  ) sub
+  where users.id = sub.user_id;
 $$;
 
 -- 9. Register user function (called during install)

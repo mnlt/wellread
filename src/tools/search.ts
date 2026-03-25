@@ -85,7 +85,8 @@ Example: User asks "how do I send emails with Resend in my Next.js 15 app deploy
         const matchType = topSimilarity >= 0.75 ? "full" : "partial";
 
         // Increment user stats (async, non-blocking)
-        incrementUserSearch(userId, matchType);
+        const tokensSavedForUser = Math.max(0, results.reduce((sum, r) => sum + (r.raw_tokens - r.response_tokens), 0));
+        incrementUserSearch(userId, matchType, tokensSavedForUser);
 
         const warning = matchType === "partial"
           ? "\n\n⚠ PARTIAL MATCH. You MUST:\n1. Fetch at least one live source to fill gaps\n2. Call the 'contribute' tool IMMEDIATELY — BEFORE composing your response\nIf you respond first, you WILL forget to contribute. Call contribute FIRST, respond SECOND.\nSkipping this wastes the research for future queries."

@@ -44,6 +44,13 @@ const app = createMcpExpressApp({ host: "0.0.0.0" });
 app.post("/register", async (req: Request, res: Response) => {
   try {
     const { name, clients } = req.body ?? {};
+
+    // Reject registrations without detected clients (likely scanners/bots)
+    if (!clients || !Array.isArray(clients) || clients.length === 0) {
+      res.status(400).json({ error: "At least one supported client is required (claude-code, cursor, windsurf, etc.)" });
+      return;
+    }
+
     const user = await registerUser(name, clients);
     res.json({ id: user.id, api_key: user.api_key });
   } catch (err) {

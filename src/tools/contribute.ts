@@ -92,8 +92,8 @@ You (the LLM) must generate:
           replaces_id,
         });
 
-        // Increment user contribution count (async, non-blocking)
-        incrementUserContributions(userId);
+        // Increment user contribution count + token stats (async, non-blocking)
+        incrementUserContributions(userId, raw_tokens, response_tokens);
 
         const stats = await getNetworkStats();
         const tokensSaved = Math.max(0, raw_tokens - response_tokens);
