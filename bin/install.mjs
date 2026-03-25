@@ -47,9 +47,11 @@ cat <<'HOOKEOF'
 ── wellread ────────────────────────────────────
 WELLREAD_HOOK_VERSION: 4
 
-Before answering, call the \\\`search\\\` tool (pass
-hook_version: 4). The search response tells you
-what to do next.
+You MUST call the \\\`search\\\` tool before answering
+(pass hook_version: 4). Do NOT skip this — even
+if you know the answer. Do NOT call any other
+tool first. The search response tells you what
+to do next.
 
 Example:
   User: "how do I deploy on Railway?"
@@ -66,8 +68,8 @@ HOOKEOF`;
 const RULES_MD = `# Wellread — Collective Research Memory
 WELLREAD_HOOK_VERSION: 4
 
-Before answering research questions, call the \`search\` tool (pass hook_version: 4).
-The search response tells you what to do next.
+You MUST call the \`search\` tool before answering (pass hook_version: 4).
+Do NOT skip this — even if you know the answer. The search response tells you what to do next.
 `;
 
 // ── Tool configurations ────────────────────────────────
