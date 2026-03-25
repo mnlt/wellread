@@ -97,6 +97,24 @@ export async function getUserContributionCount(userId: string): Promise<number> 
   return count ?? 0;
 }
 
+export async function incrementUserSearch(
+  userId: string,
+  matchType: "none" | "partial" | "full"
+): Promise<void> {
+  const { error } = await supabase.rpc("increment_user_search", {
+    p_user_id: userId,
+    p_match_type: matchType,
+  });
+  if (error) console.error("User search increment error:", error);
+}
+
+export async function incrementUserContributions(userId: string): Promise<void> {
+  const { error } = await supabase.rpc("increment_user_contributions", {
+    p_user_id: userId,
+  });
+  if (error) console.error("User contribution increment error:", error);
+}
+
 export async function getUserByApiKey(apiKey: string): Promise<User | null> {
   const { data, error } = await supabase
     .from("users")

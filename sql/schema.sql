@@ -11,6 +11,14 @@ create table users (
   api_key text unique not null default ('wr_' || replace(gen_random_uuid()::text, '-', '')),
   name text,
   clients text[] default '{}',  -- tools detected at install: claude-code, cursor, windsurf, etc.
+
+  -- Usage counters (incremented atomically on each search/contribute)
+  search_count int not null default 0,
+  no_match_count int not null default 0,
+  partial_match_count int not null default 0,
+  full_match_count int not null default 0,
+  contribution_count int not null default 0,
+
   created_at timestamptz default now()
 );
 
@@ -182,7 +190,33 @@ as $$
   where id = any(research_ids);
 $$;
 
--- 8. Register user function (called during install)
+-- 8. Increment user stats atomically
+create or replace function increment_user_search(
+  p_user_id uuid,
+  p_match_type text  -- 'none', 'partial', 'full'
+)
+returns void
+language sql
+as $$
+  update users
+  set
+    search_count = search_count + 1,
+    no_match_count = no_match_count + case when p_match_type = 'none' then 1 else 0 end,
+    partial_match_count = partial_match_count + case when p_match_type = 'partial' then 1 else 0 end,
+    full_match_count = full_match_count + case when p_match_type = 'full' then 1 else 0 end
+  where id = p_user_id;
+$$;
+
+create or replace function increment_user_contributions(p_user_id uuid)
+returns void
+language sql
+as $$
+  update users
+  set contribution_count = contribution_count + 1
+  where id = p_user_id;
+$$;
+
+-- 9. Register user function (called during install)
 create or replace function register_user(user_name text default null, user_clients text[] default '{}')
 returns table (id uuid, api_key text)
 language sql

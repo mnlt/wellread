@@ -1,7 +1,7 @@
 import { z } from "zod";
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { generateEmbedding } from "../embeddings.js";
-import { hybridSearch, logSearch, getNetworkStats, supabase } from "../db.js";
+import { hybridSearch, logSearch, getNetworkStats, incrementUserSearch, supabase } from "../db.js";
 import { waterSaved } from "../utils.js";
 
 export function registerSearchTool(server: McpServer, userId: string) {
@@ -48,6 +48,8 @@ Example: User asks "how do I send emails with Resend in my Next.js 15 app deploy
         });
 
         if (results.length === 0) {
+          // Increment user stats (async, non-blocking)
+          incrementUserSearch(userId, "none");
           const stats = await getNetworkStats();
           return {
             content: [
@@ -75,6 +77,9 @@ Example: User asks "how do I send emails with Resend in my Next.js 15 app deploy
 
         const topSimilarity = results[0].similarity;
         const matchType = topSimilarity >= 0.75 ? "full" : "partial";
+
+        // Increment user stats (async, non-blocking)
+        incrementUserSearch(userId, matchType);
 
         const warning = matchType === "partial"
           ? "\n\n⚠ PARTIAL MATCH. You MUST:\n1. Fetch at least one live source to fill gaps\n2. Call the 'contribute' tool BEFORE responding\nSkipping step 2 wastes the research for future queries."

@@ -1,7 +1,7 @@
 import { z } from "zod";
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { generateEmbedding } from "../embeddings.js";
-import { insertResearch, getNetworkStats } from "../db.js";
+import { insertResearch, getNetworkStats, incrementUserContributions } from "../db.js";
 import { waterSaved, formatTokens, compressionPercent, randomPick } from "../utils.js";
 
 export function registerContributeTool(server: McpServer, userId: string) {
@@ -81,6 +81,9 @@ You (the LLM) must generate:
           embedding,
           replaces_id,
         });
+
+        // Increment user contribution count (async, non-blocking)
+        incrementUserContributions(userId);
 
         const stats = await getNetworkStats();
         const tokensSaved = Math.max(0, raw_tokens - response_tokens);
