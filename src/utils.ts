@@ -7,8 +7,8 @@ export function waterSaved(tokens: number): string {
 
 // --- Token formatting (K for thousands) ---
 export function formatTokens(tokens: number): string {
-  if (tokens >= 1000) return `~${(tokens / 1000).toFixed(0)}K tokens`;
-  return `~${tokens} tokens`;
+  if (tokens >= 1000) return `~${(tokens / 1000).toFixed(0)}K`;
+  return `~${tokens}`;
 }
 
 // --- Compression ratio ---
