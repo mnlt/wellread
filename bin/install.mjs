@@ -3,7 +3,7 @@
 import { existsSync, readFileSync, writeFileSync, mkdirSync } from "fs";
 import { join } from "path";
 import { homedir } from "os";
-import { execSync } from "child_process";
+import { execFileSync } from "child_process";
 
 const HOME = homedir();
 const SERVER_URL = process.env.WELLREAD_URL || "https://wellread-production.up.railway.app/mcp";
@@ -19,6 +19,11 @@ function log(msg) { console.log(msg); }
 function success(msg) { console.log(green(`  ✓ ${msg}`)); }
 function skip(msg) { console.log(dim(`  - ${msg}`)); }
 function warn(msg) { console.log(yellow(`  ! ${msg}`)); }
+
+function readJSON(path) {
+  try { return JSON.parse(readFileSync(path, "utf-8")); }
+  catch { return {}; }
+}
 
 // ── Register user ──────────────────────────────────────
 
@@ -88,14 +93,14 @@ const tools = [
       // MCP server: use CLI if available (writes to ~/.claude.json),
       // otherwise write to settings.json as fallback
       try {
-        execSync(
-          `claude mcp add --transport http wellread ${SERVER_URL} --header "Authorization: Bearer ${apiKey}" --scope user 2>/dev/null`,
-          { stdio: "pipe" }
-        );
+        execFileSync("claude", [
+          "mcp", "add", "--transport", "http", "wellread", SERVER_URL,
+          "--header", `Authorization: Bearer ${apiKey}`, "--scope", "user",
+        ], { stdio: "pipe" });
       } catch {
         const configPath = join(HOME, ".claude", "settings.json");
         const config = existsSync(configPath)
-          ? JSON.parse(readFileSync(configPath, "utf-8"))
+          ? readJSON(configPath)
           : {};
         config.mcpServers = config.mcpServers || {};
         config.mcpServers.wellread = {
@@ -109,7 +114,7 @@ const tools = [
       // Hook: always goes in settings.json
       const configPath = join(HOME, ".claude", "settings.json");
       const config = existsSync(configPath)
-        ? JSON.parse(readFileSync(configPath, "utf-8"))
+        ? readJSON(configPath)
         : {};
 
       config.hooks = config.hooks || {};
@@ -141,7 +146,7 @@ const tools = [
     install: (apiKey) => {
       const configPath = join(HOME, ".cursor", "mcp.json");
       const config = existsSync(configPath)
-        ? JSON.parse(readFileSync(configPath, "utf-8"))
+        ? readJSON(configPath)
         : {};
 
       config.mcpServers = config.mcpServers || {};
@@ -174,7 +179,7 @@ ${RULES_MD}`;
       const configDir = join(HOME, ".codeium", "windsurf");
       const configPath = join(configDir, "mcp_config.json");
       const config = existsSync(configPath)
-        ? JSON.parse(readFileSync(configPath, "utf-8"))
+        ? readJSON(configPath)
         : {};
 
       config.mcpServers = config.mcpServers || {};
@@ -204,7 +209,7 @@ ${RULES_MD}`;
     install: (apiKey) => {
       const configPath = join(HOME, ".gemini", "settings.json");
       const config = existsSync(configPath)
-        ? JSON.parse(readFileSync(configPath, "utf-8"))
+        ? readJSON(configPath)
         : {};
 
       config.mcpServers = config.mcpServers || {};
@@ -238,7 +243,7 @@ ${RULES_MD}`;
       // MCP server config
       const configPath = join(vscodePath, "mcp.json");
       const config = existsSync(configPath)
-        ? JSON.parse(readFileSync(configPath, "utf-8"))
+        ? readJSON(configPath)
         : {};
 
       config.servers = config.servers || {};

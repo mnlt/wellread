@@ -4,6 +4,7 @@ import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { StreamableHTTPServerTransport } from "@modelcontextprotocol/sdk/server/streamableHttp.js";
 import { createMcpExpressApp } from "@modelcontextprotocol/sdk/server/express.js";
 import { isInitializeRequest } from "@modelcontextprotocol/sdk/types.js";
+import rateLimit from "express-rate-limit";
 import { registerUser, getUserByApiKey } from "./db.js";
 import { registerSearchTool } from "./tools/search.js";
 import { registerContributeTool } from "./tools/contribute.js";
@@ -25,7 +26,7 @@ async function authenticateRequest(req: Request): Promise<string | null> {
 function createServer(userId: string): McpServer {
   const server = new McpServer({
     name: "wellread",
-    version: "0.1.0",
+    version: "0.1.18",
   });
 
   registerSearchTool(server, userId);
@@ -40,8 +41,17 @@ const sessionUsers: Record<string, string> = {};
 
 const app = createMcpExpressApp({ host: "0.0.0.0" });
 
+// --- Rate limiting ---
+const registerLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000, // 15 minutes
+  max: 5, // 5 registrations per IP per window
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { error: "Too many registrations. Try again later." },
+});
+
 // --- REST endpoint: register user ---
-app.post("/register", async (req: Request, res: Response) => {
+app.post("/register", registerLimiter, async (req: Request, res: Response) => {
   try {
     const { name, clients } = req.body ?? {};
 
@@ -126,7 +136,7 @@ app.delete("/mcp", async (req: Request, res: Response) => {
 
 // Health check
 app.get("/health", (_req: Request, res: Response) => {
-  res.json({ status: "ok", name: "wellread", version: "0.1.0" });
+  res.json({ status: "ok", name: "wellread", version: "0.1.18" });
 });
 
 app.listen(PORT, "0.0.0.0", () => {

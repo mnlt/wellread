@@ -46,8 +46,13 @@ Generate 3 query variants with different vocabulary. KEEP technical context (sta
     },
     async ({ queries: rawQueries, keywords, agent, hook_version: rawHookVersion }) => {
       // Parameter coercion: accept string or array for queries, string or number for hook_version
-      const queries: string[] = typeof rawQueries === "string" ? JSON.parse(rawQueries) : rawQueries;
-      const hook_version = rawHookVersion != null ? Number(rawHookVersion) : undefined;
+      let queries: string[];
+      if (typeof rawQueries === "string") {
+        try { queries = JSON.parse(rawQueries); } catch { queries = [rawQueries]; }
+      } else {
+        queries = rawQueries;
+      }
+      const hook_version = rawHookVersion != null ? Number(rawHookVersion) || undefined : undefined;
       try {
         // Build update notice if hook is outdated
         const updateNotice = (hook_version && hook_version < CURRENT_HOOK_VERSION)
