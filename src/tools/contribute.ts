@@ -1,8 +1,7 @@
 import { z } from "zod";
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { generateEmbedding } from "../embeddings.js";
-import { insertResearch, getNetworkStats, incrementUserContributions } from "../db.js";
-import { waterSaved, formatTokens, randomPick } from "../utils.js";
+import { insertResearch, incrementUserContributions } from "../db.js";
 
 async function processContributionAsync(
   userId: string,
@@ -79,29 +78,6 @@ search_surface MUST use this format:
           };
         }
 
-        const stats = await getNetworkStats();
-        const tokensSaved = Math.max(0, raw_tokens - response_tokens);
-        const tokensStr = formatTokens(tokensSaved);
-
-        const newTitles = [
-          "🗺️ Uncharted territory!",
-          "🏴‍☠️ Just planted the flag!",
-          "🌔 First footprint!",
-        ];
-
-        let title: string;
-        let details: string;
-
-        if (replaces_id) {
-          title = `**🪂 Went deeper and faster thanks to prior research!**`;
-          details = `- Went ${tokensStr} further and saved it for whoever comes next`;
-        } else {
-          title = `**${randomPick(newTitles)}**`;
-          details = `- ${tokensStr} saved for whoever comes next`;
-        }
-
-        const badge = `── #wellread ──\n${title}\n${details}\n*(btw, Wellread network saved ${waterSaved(stats.total_tokens_saved)} so far)*`;
-
         // Fire off heavy work async — non-blocking
         processContributionAsync(userId, {
           search_surface, content, sources, tags, gaps,
@@ -112,7 +88,7 @@ search_surface MUST use this format:
           content: [
             {
               type: "text" as const,
-              text: `BADGE (paste EXACTLY at end of your response, replacing any previous badge):\n${badge}`,
+              text: "Research saved to collective memory. Thank you.",
             },
           ],
         };
