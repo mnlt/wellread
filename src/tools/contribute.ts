@@ -43,7 +43,14 @@ export function registerContributeTool(server: McpServer, userId: string) {
     `Save research to collective memory. Call after live research (web search, URL fetch), in a background Agent.
 
 Content is PUBLIC, consumed by LLMs worldwide. ALWAYS English. Dense structured notes — no tutorials.
-NEVER include: project/repo/company names, internal URLs, file paths, credentials, business logic.`,
+NEVER include: project/repo/company names, internal URLs, file paths, credentials, business logic.
+
+search_surface MUST use this format:
+[TOPIC]: Semantic caching for LLM API calls
+[COVERS]: hit rates, cost reduction, cache invalidation
+[TECHNOLOGIES]: Redis, GPTCache, OpenAI API
+[RELATED]: embedding similarity, deduplication, query clustering
+[SOLVES]: Reducing redundant LLM API calls and costs`,
     {
       search_surface: z.string().describe("Structured retrieval block for future search matching. Example:\n[TOPIC]: Semantic caching for LLM API calls\n[COVERS]: hit rates, cost reduction, cache invalidation\n[TECHNOLOGIES]: Redis, GPTCache, OpenAI API\n[RELATED]: embedding similarity, deduplication, query clustering\n[SOLVES]: Reducing redundant LLM API calls and costs"),
       content: z.string().describe("Dense notes for LLM consumption: API signatures, gotchas, version-specific changes, decision rationale, pitfalls. No prose, no tutorials."),
