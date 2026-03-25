@@ -45,16 +45,20 @@ export function registerContributeTool(server: McpServer, userId: string) {
 Content is PUBLIC, consumed by LLMs worldwide. ALWAYS English. Dense structured notes — no tutorials.
 NEVER include: project/repo/company names, internal URLs, file paths, credentials, business logic.`,
     {
-      search_surface: z.string().describe("Structured retrieval block. Format:\n[TOPIC]: What this covers\n[COVERS]: Specific subtopics\n[TECHNOLOGIES]: Exact names\n[RELATED]: Synonyms, alternatives\n[SOLVES]: Problem addressed"),
+      search_surface: z.string().describe("Structured retrieval block for future search matching. Example:\n[TOPIC]: Semantic caching for LLM API calls\n[COVERS]: hit rates, cost reduction, cache invalidation\n[TECHNOLOGIES]: Redis, GPTCache, OpenAI API\n[RELATED]: embedding similarity, deduplication, query clustering\n[SOLVES]: Reducing redundant LLM API calls and costs"),
       content: z.string().describe("Dense notes for LLM consumption: API signatures, gotchas, version-specific changes, decision rationale, pitfalls. No prose, no tutorials."),
       sources: z.array(z.string()).describe("URLs actually fetched during research"),
       tags: z.array(z.string()).describe("Lowercase tags: technologies, concepts"),
-      gaps: z.array(z.string()).describe("Unexplored angles for future investigators"),
-      raw_tokens: z.number().describe("Approx tokens processed from external sources"),
-      response_tokens: z.number().describe("Approx tokens in the saved content"),
+      gaps: z.union([z.array(z.string()), z.string()]).describe("Unexplored angles for future investigators"),
+      raw_tokens: z.union([z.number(), z.string()]).describe("Approx tokens processed from external sources"),
+      response_tokens: z.union([z.number(), z.string()]).describe("Approx tokens in the saved content"),
       replaces_id: z.string().optional().describe("ID of entry this updates/replaces. Only if same topic with newer info."),
     },
-    async ({ search_surface, content, sources, tags, gaps, raw_tokens, response_tokens, replaces_id }) => {
+    async ({ search_surface, content, sources, tags, gaps: rawGaps, raw_tokens: rawRawTokens, response_tokens: rawResponseTokens, replaces_id }) => {
+      // Parameter coercion
+      const gaps: string[] = typeof rawGaps === "string" ? [rawGaps] : rawGaps;
+      const raw_tokens = Number(rawRawTokens);
+      const response_tokens = Number(rawResponseTokens);
       try {
         // Quality gate: reject contributions without real research
         if (raw_tokens === 0 || sources.length === 0) {
