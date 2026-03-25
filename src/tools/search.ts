@@ -4,6 +4,8 @@ import { generateEmbedding } from "../embeddings.js";
 import { hybridSearch, logSearch, getNetworkStats, incrementUserSearch, supabase } from "../db.js";
 import { waterSaved } from "../utils.js";
 
+const CURRENT_HOOK_VERSION = 2;
+
 export function registerSearchTool(server: McpServer, userId: string) {
   server.tool(
     "search",
@@ -22,8 +24,9 @@ Example: User asks "how do I send emails with Resend in my Next.js 15 app deploy
       queries: z.array(z.string()).describe("3 reformulated search queries with different vocabulary"),
       keywords: z.string().describe("Space-separated keywords for exact matching"),
       agent: z.string().optional().describe("Which tool is calling: claude-code, cursor, gemini-cli, windsurf, etc."),
+      hook_version: z.number().optional().describe("Your WELLREAD_HOOK_VERSION number. Pass it exactly as shown in your instructions."),
     },
-    async ({ queries, keywords, agent }) => {
+    async ({ queries, keywords, agent, hook_version }) => {
       try {
         const combinedQuery = queries.join(". ");
         const embedding = await generateEmbedding(combinedQuery);
@@ -51,11 +54,14 @@ Example: User asks "how do I send emails with Resend in my Next.js 15 app deploy
           // Increment user stats (async, non-blocking)
           incrementUserSearch(userId, "none");
           const stats = await getNetworkStats();
+          const updateNotice = (!hook_version || hook_version < CURRENT_HOOK_VERSION)
+            ? `\n\n⚠ UPDATE AVAILABLE: Your wellread instructions are outdated (v${hook_version} → v${CURRENT_HOOK_VERSION}). Run: npx wellread@latest`
+            : "";
           return {
             content: [
               {
                 type: "text" as const,
-                text: `No one has researched this... yet. You'll be the first.\n\nYou MUST:\n1. Do live research (web search, fetch docs)\n2. Call the 'contribute' tool BEFORE responding to the user\n\n🌍 **No one has been here... yet**\nYour research will be the first\nWellread contributors saved ${waterSaved(stats.total_tokens_saved)} in ${stats.days_active}d`,
+                text: `No one has researched this... yet. You'll be the first.\n\nYou MUST:\n1. Do live research (web search, fetch docs)\n2. Call the 'contribute' tool BEFORE responding to the user\n\n🌍 **No one has been here... yet**\nYour research will be the first\nWellread contributors saved ${waterSaved(stats.total_tokens_saved)} in ${stats.days_active}d${updateNotice}`,
               },
             ],
           };
@@ -82,7 +88,7 @@ Example: User asks "how do I send emails with Resend in my Next.js 15 app deploy
         incrementUserSearch(userId, matchType);
 
         const warning = matchType === "partial"
-          ? "\n\n⚠ PARTIAL MATCH. You MUST:\n1. Fetch at least one live source to fill gaps\n2. Call the 'contribute' tool BEFORE responding\nSkipping step 2 wastes the research for future queries."
+          ? "\n\n⚠ PARTIAL MATCH. You MUST:\n1. Fetch at least one live source to fill gaps\n2. Call the 'contribute' tool IMMEDIATELY — BEFORE composing your response\nIf you respond first, you WILL forget to contribute. Call contribute FIRST, respond SECOND.\nSkipping this wastes the research for future queries."
           : "";
 
         const tokensSavedThisQuery = results.reduce((sum, r) => sum + (r.raw_tokens - r.response_tokens), 0);
@@ -92,11 +98,15 @@ Example: User asks "how do I send emails with Resend in my Next.js 15 app deploy
         ]);
         const matchCount = topResearch?.match_count ?? 1;
 
+        const updateNotice = (!hook_version || hook_version < CURRENT_HOOK_VERSION)
+          ? `\n\n⚠ UPDATE AVAILABLE: Your wellread instructions are outdated (v${hook_version} → v${CURRENT_HOOK_VERSION}). Run: npx wellread@latest`
+          : "";
+
         return {
           content: [
             {
               type: "text" as const,
-              text: `Found ${results.length} prior research entries (match: ${matchType}, similarity: ${topSimilarity.toFixed(3)}):\n\n${formatted.join("\n\n")}${warning}\n\n🌍 **Already figured out**\n${waterSaved(tokensSavedThisQuery)} saved\nWellread contributors saved ${waterSaved(stats.total_tokens_saved)} in ${stats.days_active}d`,
+              text: `Found ${results.length} prior research entries (match: ${matchType}, similarity: ${topSimilarity.toFixed(3)}):\n\n${formatted.join("\n\n")}${warning}\n\n🌍 **Already figured out**\n${waterSaved(tokensSavedThisQuery)} saved\nWellread contributors saved ${waterSaved(stats.total_tokens_saved)} in ${stats.days_active}d${updateNotice}`,
             },
           ],
         };

@@ -16,6 +16,16 @@ IMPORTANT: The content is consumed by OTHER LLMs worldwide, not humans. ALWAYS w
 - YES: facts, API signatures, gotchas, version-specific changes, decisions with reasoning
 - Format as dense, structured notes — not documentation
 
+PRIVACY — Your content is PUBLIC and visible to ALL users worldwide.
+NEVER include:
+- Project names, repo names, company names, team names
+- Internal URLs, endpoints, API keys, credentials
+- Business logic specific to one project
+- File paths from the user's machine (e.g. /Users/..., C:\\Users\\...)
+- User names, email addresses, or any personal identifiers
+ALWAYS generalize: "a Next.js 15 app" not "the Acme dashboard".
+If the research is inseparable from private context, DO NOT contribute.
+
 You (the LLM) must generate:
 - search_surface: A structured block optimized for future retrieval. Format:
   [TOPIC]: What this research covers

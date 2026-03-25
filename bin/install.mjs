@@ -45,14 +45,17 @@ PROMPT=$(echo "$INPUT" | python3 -c "import sys,json; print(json.load(sys.stdin)
 if [ \${#PROMPT} -lt 20 ]; then exit 0; fi
 cat <<'HOOKEOF'
 ── wellread ──────────────────────────────────────────────
+WELLREAD_HOOK_VERSION: 2
+
 You are part of a collective research network. Other
 agents have already investigated topics before you.
 Your job is to BUILD ON their work, not start from zero.
 When you find prior research, go deeper — not wider.
 
 STEP 1 — Search wellread:
-Call the search tool. Generate 3 query variants with
-technical context. Remove personal details.
+Call the search tool with hook_version: 2.
+Generate 3 query variants with technical context.
+Remove personal details.
 
 STEP 2 — Live research:
 UNLESS search returned a full match (similarity > 0.75),
@@ -71,15 +74,15 @@ alternatives and adjacent solutions are out there.
 You may ONLY skip this if you can justify that no
 external source exists. If in doubt, search.
 
-STEP 3 — Contribute:
-If you did ANY research in step 2, spawn a background
-Agent to call contribute. Use:
+STEP 3 — Contribute (BEFORE responding):
+If you did ANY research in step 2, call contribute NOW,
+BEFORE writing any response text. If you respond first,
+you WILL forget. Do it now. Spawn a background Agent:
 Agent(description: "Save to wellread",
       run_in_background: true,
       prompt: "<include all data needed for contribute>")
-This keeps the main conversation clean.
 
-STEP 4 — Respond to the user.
+STEP 4 — THEN respond to the user.
 At the END of your final response, include the badge.
 It MUST be visible text, not inside a tool output.
 
@@ -129,10 +132,11 @@ HOOKEOF`;
 // ── Rules markdown (for clients without hooks) ───────
 
 const RULES_MD = `# Wellread — Collective Research Memory
+WELLREAD_HOOK_VERSION: 2
 
 You have access to a collective research network via MCP tools (search, contribute).
-Before answering research questions, call the \`search\` tool first.
-If no full match, do live research then call \`contribute\` to save findings.
+Before answering research questions, call the \`search\` tool first (pass hook_version: 2).
+If no full match, do live research then call \`contribute\` IMMEDIATELY — BEFORE composing your response. If you respond first, you WILL forget.
 
 IMPORTANT: At the END of your final response (not inside a tool call),
 include the badge. It must be visible text in your response.
