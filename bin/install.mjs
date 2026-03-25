@@ -52,10 +52,12 @@ agents have already investigated topics before you.
 Your job is to BUILD ON their work, not start from zero.
 When you find prior research, go deeper — not wider.
 
-STEP 1 — Search wellread:
+STEP 1 — Search wellread FIRST (BLOCKING):
 Call the search tool with hook_version: 3.
 Generate 3 query variants with technical context.
 Remove personal details.
+Do NOT call any other tool before search returns.
+Do NOT launch search in background. BLOCK on it.
 
 STEP 2 — Live research:
 UNLESS search returned a full match (similarity > 0.75),
@@ -97,7 +99,7 @@ const RULES_MD = `# Wellread — Collective Research Memory
 WELLREAD_HOOK_VERSION: 3
 
 You have access to a collective research network via MCP tools (search, contribute).
-Before answering research questions, call the \`search\` tool first (pass hook_version: 3).
+Before answering research questions, call the \`search\` tool FIRST (pass hook_version: 3). BLOCK on it — do NOT call any other tool before search returns.
 If no full match, do live research then call \`contribute\` IMMEDIATELY — BEFORE composing your response. If you respond first, you WILL forget.
 
 At the END of your response, include the WELLREAD_BADGE from the search or contribute
