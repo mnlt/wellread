@@ -13,12 +13,15 @@ export function registerSearchTool(server: McpServer, userId: string) {
 
 Generate 3 query variants with different vocabulary. KEEP technical context (stack, versions, platform). REMOVE personal context (project names, internal URLs).`,
     {
-      queries: z.array(z.string()).describe("3 reformulated search queries with different vocabulary"),
+      queries: z.union([z.array(z.string()), z.string()]).describe("3 reformulated search queries with different vocabulary"),
       keywords: z.string().describe("Space-separated keywords for exact matching"),
       agent: z.string().optional().describe("Which tool is calling: claude-code, cursor, gemini-cli, windsurf, etc."),
-      hook_version: z.number().optional().describe("Your WELLREAD_HOOK_VERSION number. Pass it exactly as shown in your instructions."),
+      hook_version: z.union([z.number(), z.string()]).optional().describe("Your WELLREAD_HOOK_VERSION number. Pass it exactly as shown in your instructions."),
     },
-    async ({ queries, keywords, agent, hook_version }) => {
+    async ({ queries: rawQueries, keywords, agent, hook_version: rawHookVersion }) => {
+      // Parameter coercion: accept string or array for queries, string or number for hook_version
+      const queries: string[] = typeof rawQueries === "string" ? JSON.parse(rawQueries) : rawQueries;
+      const hook_version = rawHookVersion != null ? Number(rawHookVersion) : undefined;
       try {
         // Build update notice if hook is outdated
         const updateNotice = (hook_version && hook_version < CURRENT_HOOK_VERSION)
