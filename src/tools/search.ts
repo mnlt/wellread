@@ -85,7 +85,7 @@ Generate 3 query variants with different vocabulary. KEEP technical context (sta
           incrementUserSearch(userId, "none");
           const stats = await getNetworkStats();
           const quip = randomPick(NO_MATCH_QUIPS);
-          const badge = `── # wellread ──\n\n**🗺️ First research on this topic!**\n\n- Saving findings for whoever comes next\n\n*${quip}*\n\n*(btw, Wellread network saved ${waterSaved(stats.total_tokens_saved)} so far)*`;
+          const badge = `── # wellread ──\n\n**🗺️ First research on this topic!**\n\nSaving findings for whoever comes next\n\n*${quip}*\n\n*(btw, Wellread network saved ${waterSaved(stats.total_tokens_saved)} so far)*`;
 
           return {
             content: [
