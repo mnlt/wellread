@@ -30,6 +30,7 @@ function readJSON(path) {
 function findExistingApiKey() {
   // Check all known config locations for an existing wellread API key
   const configPaths = [
+    { path: join(HOME, ".claude.json"), extract: (c) => c?.mcpServers?.wellread?.headers?.Authorization },
     { path: join(HOME, ".claude", "settings.json"), extract: (c) => c?.mcpServers?.wellread?.headers?.Authorization },
     { path: join(HOME, ".cursor", "mcp.json"), extract: (c) => c?.mcpServers?.wellread?.headers?.Authorization },
     { path: join(HOME, ".codeium", "windsurf", "mcp_config.json"), extract: (c) => c?.mcpServers?.wellread?.headers?.Authorization },
@@ -113,24 +114,40 @@ const tools = [
       const hookPath = join(hooksDir, "hook.sh");
       writeFileSync(hookPath, HOOK_SCRIPT, { mode: 0o755 });
 
-      // MCP server: use CLI if available (writes to ~/.claude.json),
-      // otherwise write to settings.json as fallback
-      try {
-        execFileSync("claude", [
-          "mcp", "add", "--transport", "http", "wellread", SERVER_URL,
-          "--header", `Authorization: Bearer ${apiKey}`, "--scope", "user",
-        ], { stdio: "pipe" });
-      } catch {
+      // MCP server config — update both ~/.claude.json and ~/.claude/settings.json
+      // to avoid desync when one has an old API key
+      const mcpEntry = {
+        type: "http",
+        url: SERVER_URL,
+        headers: { Authorization: `Bearer ${apiKey}` },
+      };
+
+      // ~/.claude.json (written by `claude mcp add`)
+      const claudeJsonPath = join(HOME, ".claude.json");
+      if (existsSync(claudeJsonPath)) {
+        const cj = readJSON(claudeJsonPath);
+        cj.mcpServers = cj.mcpServers || {};
+        cj.mcpServers.wellread = mcpEntry;
+        writeFileSync(claudeJsonPath, JSON.stringify(cj, null, 2));
+      } else {
+        try {
+          execFileSync("claude", [
+            "mcp", "add", "--transport", "http", "wellread", SERVER_URL,
+            "--header", `Authorization: Bearer ${apiKey}`, "--scope", "user",
+          ], { stdio: "pipe" });
+        } catch {
+          // CLI not available, write manually
+        }
+      }
+
+      // ~/.claude/settings.json (fallback, always update)
+      {
         const configPath = join(HOME, ".claude", "settings.json");
         const config = existsSync(configPath)
           ? readJSON(configPath)
           : {};
         config.mcpServers = config.mcpServers || {};
-        config.mcpServers.wellread = {
-          type: "http",
-          url: SERVER_URL,
-          headers: { Authorization: `Bearer ${apiKey}` },
-        };
+        config.mcpServers.wellread = mcpEntry;
         writeFileSync(configPath, JSON.stringify(config, null, 2));
       }
 
