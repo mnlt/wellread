@@ -32,7 +32,7 @@ const NO_MATCH_QUIPS = [
   "Nobody asked this before? Really?",
 ];
 
-export function registerSearchTool(server: McpServer, userId: string) {
+export function registerSearchTool(server: McpServer, userId: string, sessionId: string) {
   server.tool(
     "search",
     `Search the collective research memory. Call this BEFORE doing your own research.
@@ -79,6 +79,7 @@ Generate 3 query variants with different vocabulary. KEEP technical context (sta
           })),
           tokens_saved: Math.max(tokensSaved, 0),
           agent,
+          session_id: sessionId,
         });
 
         if (results.length === 0) {

@@ -23,13 +23,13 @@ async function authenticateRequest(req: Request): Promise<string | null> {
 }
 
 // --- Tools registration ---
-function createServer(userId: string): McpServer {
+function createServer(userId: string, sessionId: string): McpServer {
   const server = new McpServer({
     name: "wellread",
-    version: "0.1.18",
+    version: "0.1.19",
   });
 
-  registerSearchTool(server, userId);
+  registerSearchTool(server, userId, sessionId);
   registerContributeTool(server, userId);
 
   return server;
@@ -88,8 +88,9 @@ app.post("/mcp", async (req: Request, res: Response) => {
       return;
     }
 
+    const mcpSessionId = randomUUID();
     const transport = new StreamableHTTPServerTransport({
-      sessionIdGenerator: () => randomUUID(),
+      sessionIdGenerator: () => mcpSessionId,
       onsessioninitialized: (id) => {
         transports[id] = transport;
         sessionUsers[id] = userId;
@@ -103,7 +104,7 @@ app.post("/mcp", async (req: Request, res: Response) => {
       }
     };
 
-    const server = createServer(userId);
+    const server = createServer(userId, mcpSessionId);
     await server.connect(transport);
     await transport.handleRequest(req, res, req.body);
     return;

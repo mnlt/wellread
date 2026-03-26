@@ -184,6 +184,7 @@ export interface SearchLog {
   results: { research_id: string; score: number; raw_tokens: number; response_tokens: number }[];
   tokens_saved: number;
   agent?: string;
+  session_id?: string;
 }
 
 export async function logSearch(entry: SearchLog): Promise<void> {
@@ -196,6 +197,7 @@ export async function logSearch(entry: SearchLog): Promise<void> {
     results: entry.results,
     tokens_saved: entry.tokens_saved,
     agent: entry.agent ?? null,
+    session_id: entry.session_id ?? null,
   });
 
   if (error) {
