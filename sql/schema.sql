@@ -20,9 +20,9 @@ create table users (
   contribution_count int not null default 0,
 
   -- Token economics
-  tokens_searched bigint not null default 0,     -- tokens saved when searching (accumulated)
-  tokens_contributed bigint not null default 0,   -- raw_tokens from contributions (accumulated)
-  tokens_synthesized bigint not null default 0,   -- response_tokens from contributions (accumulated)
+  tokens_kept bigint not null default 0,        -- tokens you conserved by hitting cache (accumulated)
+  tokens_donated bigint not null default 0,     -- tokens you processed from external sources for the community (accumulated)
+  tokens_distilled bigint not null default 0,   -- tokens in your saved research entries (accumulated)
   citations_count int not null default 0,         -- times your research appeared in others' searches
 
   created_at timestamptz default now()
@@ -211,7 +211,7 @@ as $$
     no_match_count = no_match_count + case when p_match_type = 'none' then 1 else 0 end,
     partial_match_count = partial_match_count + case when p_match_type = 'partial' then 1 else 0 end,
     full_match_count = full_match_count + case when p_match_type = 'full' then 1 else 0 end,
-    tokens_searched = tokens_searched + p_tokens_saved
+    tokens_kept = tokens_kept + p_tokens_saved
   where id = p_user_id;
 $$;
 
@@ -226,8 +226,8 @@ as $$
   update users
   set
     contribution_count = contribution_count + 1,
-    tokens_contributed = tokens_contributed + p_raw_tokens,
-    tokens_synthesized = tokens_synthesized + p_response_tokens
+    tokens_donated = tokens_donated + p_raw_tokens,
+    tokens_distilled = tokens_distilled + p_response_tokens
   where id = p_user_id;
 $$;
 
