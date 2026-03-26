@@ -14,10 +14,11 @@ That's it. Wellread auto-detects your tools, registers you, and configures every
 
 ## How it works
 
-1. You ask your agent a question
-2. Your agent searches wellread first
-3. **Hit** — gets the answer from the network, skips the research
-4. **Miss** — researches normally, saves findings for whoever comes next
+Use your agent as usual. When you need to research something, just ask. Your client will check wellread first, automatically.
+
+- **Hit** — answer already exists. Skip the search, save the tokens.
+- **Partial hit** — related research found. Start from there, skip what's already been done.
+- **Miss** — nothing found. Research normally, save findings for whoever comes next.
 
 Every search makes the network smarter. Every contribution saves tokens for the next person.
 
