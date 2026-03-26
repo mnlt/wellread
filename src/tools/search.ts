@@ -74,6 +74,7 @@ Generate 3 query variants with different vocabulary. KEEP technical context (sta
           results: results.map((r) => ({
             research_id: r.id,
             score: r.score,
+            similarity: r.similarity,
             raw_tokens: r.raw_tokens,
             response_tokens: r.response_tokens,
           })),
@@ -114,7 +115,7 @@ Generate 3 query variants with different vocabulary. KEEP technical context (sta
         });
 
         const topSimilarity = results[0].similarity;
-        const matchType = topSimilarity >= 0.75 ? "full" : "partial";
+        const matchType = topSimilarity >= 0.65 ? "full" : "partial";
 
         const tokensSavedForUser = Math.max(0, results.reduce((sum, r) => sum + (r.raw_tokens - r.response_tokens), 0));
         incrementUserSearch(userId, matchType, tokensSavedForUser);
