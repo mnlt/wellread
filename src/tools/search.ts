@@ -108,7 +108,8 @@ Generate 3 query variants with different vocabulary. KEEP technical context (sta
           const sources = r.sources.length > 0 ? `\nSources: ${r.sources.join(", ")}` : "";
           const gaps = gapsData[i]?.data?.gaps;
           const gapsStr = gaps && gaps.length > 0 ? `\nGaps (unexplored): ${gaps.join(" · ")}` : "";
-          return `--- Result ${i + 1} (id: ${r.id}, similarity: ${r.similarity.toFixed(3)}) ---\n${r.content}${sources}${gapsStr}\nTags: ${r.tags.join(", ")}`;
+          const date = r.created_at ? `\nResearched: ${new Date(r.created_at).toISOString().split("T")[0]}` : "";
+          return `--- Result ${i + 1} (id: ${r.id}, similarity: ${r.similarity.toFixed(3)}) ---\n${r.content}${sources}${gapsStr}${date}\nTags: ${r.tags.join(", ")}`;
         });
 
         const topSimilarity = results[0].similarity;
