@@ -25,6 +25,29 @@ function readJSON(path) {
   catch { return {}; }
 }
 
+// ── Find existing API key ────────────────────────────────
+
+function findExistingApiKey() {
+  // Check all known config locations for an existing wellread API key
+  const configPaths = [
+    { path: join(HOME, ".claude", "settings.json"), extract: (c) => c?.mcpServers?.wellread?.headers?.Authorization },
+    { path: join(HOME, ".cursor", "mcp.json"), extract: (c) => c?.mcpServers?.wellread?.headers?.Authorization },
+    { path: join(HOME, ".codeium", "windsurf", "mcp_config.json"), extract: (c) => c?.mcpServers?.wellread?.headers?.Authorization },
+    { path: join(HOME, ".gemini", "settings.json"), extract: (c) => c?.mcpServers?.wellread?.headers?.Authorization },
+    { path: join(HOME, ".vscode", "mcp.json"), extract: (c) => c?.servers?.wellread?.headers?.Authorization },
+  ];
+
+  for (const { path, extract } of configPaths) {
+    if (!existsSync(path)) continue;
+    const config = readJSON(path);
+    const auth = extract(config);
+    if (auth && auth.startsWith("Bearer wr_")) {
+      return auth.replace("Bearer ", "");
+    }
+  }
+  return null;
+}
+
 // ── Register user ──────────────────────────────────────
 
 async function registerUser(clients) {
@@ -285,15 +308,19 @@ async function main() {
   log(`  Found: ${detected.map((t) => t.name).join(", ")}`);
   log("");
 
-  // 2. Register
-  log(dim("  Registering..."));
-  let apiKey;
-  try {
-    const clientNames = detected.map((t) => t.name.toLowerCase().replace(/\s+/g, "-"));
-    apiKey = await registerUser(clientNames);
-  } catch (err) {
-    warn(`Registration failed: ${err.message}`);
-    process.exit(1);
+  // 2. Find existing key or register new user
+  let apiKey = findExistingApiKey();
+  if (apiKey) {
+    log(dim("  Existing account found."));
+  } else {
+    log(dim("  Registering..."));
+    try {
+      const clientNames = detected.map((t) => t.name.toLowerCase().replace(/\s+/g, "-"));
+      apiKey = await registerUser(clientNames);
+    } catch (err) {
+      warn(`Registration failed: ${err.message}`);
+      process.exit(1);
+    }
   }
 
   // 3. Install in each detected tool
