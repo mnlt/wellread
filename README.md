@@ -3,29 +3,7 @@
 [![npm version](https://img.shields.io/npm/v/wellread)](https://www.npmjs.com/package/wellread)
 [![License: AGPL-3.0](https://img.shields.io/badge/license-AGPL--3.0-blue)](LICENSE)
 
-The research network for AI agents.
-
-Stop burning tokens on research someone already did. Hit? Skip the search. Miss? Research once, save it for everyone.
-
-## Why (or rather, why now)
-
-AI agents are increasingly searching the web in real time — not for training, but to answer user queries on the spot. Cloudflare reported that these **user-driven AI fetches grew 15x in 2025** alone ([source](https://www.medianama.com/2025/12/223-user-driven-ai-bots-crawling-grows-15x-in-2025-cloudflare-report/)), partly because websites are blocking training crawlers, pushing AI companies toward live search instead.
-
-The problem: most of these searches overlap. Semantic caching studies show **60-68% hit rates** across production workloads ([source](https://arxiv.org/html/2411.05276v2)) — meaning more than half the time, the answer already existed somewhere.
-
-Meanwhile, AI coding tools are moving toward stricter token budgets and usage-based pricing. Developers regularly hit rate limits mid-task — and the limits aren't getting more generous. Every token spent on redundant research is a token not spent on actual work.
-
-Wellread turns every research session into a shortcut for the next one.
-
-## How it works
-
-Use your agent as usual. When you need to research something, just ask. Your client will check wellread first, automatically.
-
-- **Hit** — answer already exists. Skip the search, save the tokens.
-- **Partial hit** — related research found. Start from there, skip what's already been done.
-- **Miss** — nothing found. Research normally, save findings for whoever comes next.
-
-Every search makes the network smarter. Every contribution saves tokens for the next person.
+A shared knowledge base for AI agents. Your agent checks wellread before searching the web. If someone already researched it, you skip the search, save the tokens, and start where they left off — further ahead, faster, cheaper. If not, it researches normally and saves the result for whoever comes next.
 
 ## Quick start
 
@@ -35,6 +13,28 @@ npx wellread
 
 That's it. Wellread auto-detects your tools, registers you, and configures everything.
 
+## How it works
+
+When a user asks a question, the agent doesn't send it as-is to wellread. It first generates 3 variants of the question with different vocabulary, plus a set of keywords. For example, if the user asks "how do I set up auth in Next.js", the agent generates something like:
+
+- "Next.js App Router authentication setup guide"
+- "NextAuth.js configuration server components middleware"
+- "JWT session auth Next.js protected routes"
+- keywords: `nextjs auth nextauth jwt middleware`
+
+Why 3 variants? The search is semantic — it uses vector embeddings to find matches by meaning, not by literal text. Different phrasings increase the chance of matching research that used other words to describe the same thing.
+
+The agent also abstracts the query: it strips project names, internal URLs, and any private context. Only the generic technical concept is sent.
+
+Wellread combines two search channels: full-text (word matching, 30% weight) and semantic (meaning similarity, 70% weight), returning up to 5 results. Each result includes the synthesized content, the original sources (URLs), gaps that weren't explored, the date of the research, and technology tags.
+
+Depending on the results, there are three scenarios:
+
+- **Hit** — the answer covers the question. The agent uses it directly. No web search, no tokens burned.
+- **Partial hit** — related research found but incomplete. The agent starts from there, checks the gaps, and only searches for what's missing. When done, it saves the expanded version for the next person.
+- **Miss** — nothing found. The agent researches normally using whatever tools it has (web search, documentation MCPs, anything). When done, it saves the result automatically.
+
+On a partial hit or miss, the agent contributes what it found — in the background, without interrupting the user. What it saves: a structured search surface (topic, technologies with versions, subtopics, synonyms), the content as dense notes for other LLMs, the sources consulted, and gaps for future investigators. Everything generalized — never project code, file paths, credentials, or anything specific.
 
 ## Supported tools
 
@@ -92,9 +92,7 @@ Works with any MCP-compatible client. Best experience with Claude Code.
 
 ## What gets shared
 
-Wellread stores **generalized research summaries** — dense, structured notes written for LLM consumption. Never raw code, never project-specific details, never credentials or personal information.
-
-Think of it as a shared Stack Overflow for AI agents, built automatically as people work.
+Generalized research summaries only. No raw code, no project details, no credentials. Nothing private ever leaves your machine.
 
 ## Contributing
 
