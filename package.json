@@ -1,6 +1,6 @@
 {
   "name": "wellread",
-  "version": "0.1.20",
+  "version": "0.1.21",
   "description": "Collective research memory for AI agents. Search before you research, contribute when you're done.",
   "type": "module",
   "main": "src/server.ts",
@@ -13,7 +13,9 @@
     "dev": "tsx src/server.ts"
   },
   "files": [
-    "bin/"
+    "bin/",
+    "README.md",
+    "LICENSE"
   ],
   "engines": {
     "node": ">=18.0.0"
