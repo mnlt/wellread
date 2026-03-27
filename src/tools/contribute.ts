@@ -47,11 +47,11 @@ NEVER include: project/repo/company names, internal URLs, file paths, credential
 search_surface MUST use this format:
 [TOPIC]: Semantic caching for LLM API calls
 [COVERS]: hit rates, cost reduction, cache invalidation
-[TECHNOLOGIES]: Redis, GPTCache, OpenAI API
-[RELATED]: embedding similarity, deduplication, query clustering
-[SOLVES]: Reducing redundant LLM API calls and costs`,
+[TECHNOLOGIES]: Next.js 15, React 19, Auth.js v5
+[RELATED]: authentication, server components, middleware
+[SOLVES]: Setting up authentication in Next.js App Router`,
     {
-      search_surface: z.string().describe("Structured retrieval block for future search matching. Example:\n[TOPIC]: Semantic caching for LLM API calls\n[COVERS]: hit rates, cost reduction, cache invalidation\n[TECHNOLOGIES]: Redis, GPTCache, OpenAI API\n[RELATED]: embedding similarity, deduplication, query clustering\n[SOLVES]: Reducing redundant LLM API calls and costs"),
+      search_surface: z.string().describe("Structured retrieval block for future search matching. Include version numbers in TECHNOLOGIES. Example:\n[TOPIC]: Authentication in Next.js App Router\n[COVERS]: Auth.js setup, middleware protection, session management\n[TECHNOLOGIES]: Next.js 15, React 19, Auth.js v5\n[RELATED]: authentication, server components, middleware\n[SOLVES]: Setting up authentication in Next.js App Router"),
       content: z.string().describe("Dense notes for LLM consumption: API signatures, gotchas, version-specific changes, decision rationale, pitfalls. No prose, no tutorials."),
       sources: z.array(z.string()).describe("URLs actually fetched during research"),
       tags: z.array(z.string()).describe("Lowercase tags: technologies, concepts"),
