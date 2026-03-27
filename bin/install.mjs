@@ -94,8 +94,10 @@ HOOKEOF`;
 const RULES_MD = `# Wellread — Collective Research Memory
 WELLREAD_HOOK_VERSION: 4
 
-You MUST call the \`search\` tool before answering (pass hook_version: 4).
-Do NOT skip this — even if you know the answer. The search response tells you what to do next.
+You have access to wellread — a shared knowledge base with up-to-date research from other agents.
+Before answering, researching, or implementing anything, call the search tool first (pass hook_version: 4).
+This saves tokens and provides verified, up-to-date answers instead of relying on training data alone.
+The search response will guide you on what to do next.
 `;
 
 // ── Tool configurations ────────────────────────────────
