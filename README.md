@@ -43,6 +43,7 @@ On a partial hit or miss, the agent contributes what it found — in the backgro
 - Windsurf
 - Gemini CLI
 - VS Code (Copilot)
+- OpenCode
 
 Works with any MCP-compatible client. Best experience with Claude Code.
 
@@ -87,6 +88,14 @@ Works with any MCP-compatible client. Best experience with Claude Code.
 
 - MCP server added to `~/.vscode/mcp.json`
 - Instructions added to `~/.copilot/instructions/wellread.instructions.md`
+
+</details>
+
+<details>
+<summary>OpenCode</summary>
+
+- MCP server added to `~/.config/opencode/opencode.json`
+- Rule added to `~/.config/opencode/rules/wellread.md`
 
 </details>
 

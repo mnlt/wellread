@@ -36,6 +36,7 @@ function findExistingApiKey() {
     { path: join(HOME, ".codeium", "windsurf", "mcp_config.json"), extract: (c) => c?.mcpServers?.wellread?.headers?.Authorization },
     { path: join(HOME, ".gemini", "settings.json"), extract: (c) => c?.mcpServers?.wellread?.headers?.Authorization },
     { path: join(HOME, ".vscode", "mcp.json"), extract: (c) => c?.servers?.wellread?.headers?.Authorization },
+    { path: join(HOME, ".config", "opencode", "opencode.json"), extract: (c) => c?.mcp?.wellread?.headers?.Authorization },
   ];
 
   for (const { path, extract } of configPaths) {
@@ -298,6 +299,33 @@ ${RULES_MD}`;
       const instructionsDir = join(HOME, ".copilot", "instructions");
       if (!existsSync(instructionsDir)) mkdirSync(instructionsDir, { recursive: true });
       writeFileSync(join(instructionsDir, "wellread.instructions.md"), RULES_MD);
+
+      return true;
+    },
+  },
+  {
+    name: "OpenCode",
+    detect: () => existsSync(join(HOME, ".config", "opencode")),
+    install: (apiKey) => {
+      // MCP server config
+      const configPath = join(HOME, ".config", "opencode", "opencode.json");
+      const config = existsSync(configPath)
+        ? readJSON(configPath)
+        : {};
+
+      config.mcp = config.mcp || {};
+      config.mcp.wellread = {
+        type: "remote",
+        url: SERVER_URL,
+        headers: { Authorization: `Bearer ${apiKey}` },
+      };
+
+      writeFileSync(configPath, JSON.stringify(config, null, 2));
+
+      // Write rules
+      const rulesDir = join(HOME, ".config", "opencode", "rules");
+      if (!existsSync(rulesDir)) mkdirSync(rulesDir, { recursive: true });
+      writeFileSync(join(rulesDir, "wellread.md"), RULES_MD);
 
       return true;
     },
