@@ -12,12 +12,3 @@ Thanks for your interest in wellread.
 
 Please open an issue first to discuss what you'd like to change.
 This avoids wasted effort on both sides.
-
-## What we're NOT looking for right now
-
-- Large feature additions
-- Architectural rewrites
-- Changes to the core search/contribute flow
-
-This is an early-stage project with a clear direction.
-We appreciate the enthusiasm, but we'd rather keep things focused.
