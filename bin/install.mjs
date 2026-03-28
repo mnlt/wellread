@@ -378,6 +378,8 @@ async function main() {
 
   log("");
   log(green("  ✓ Done. Restart your editor/CLI to activate wellread."));
+  log(dim("  Your agent will use wellread automatically."));
+  log(dim("  You can also type \"use wellread\" in any prompt to trigger it."));
   log("");
 }
 
