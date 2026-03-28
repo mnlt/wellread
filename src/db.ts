@@ -33,6 +33,7 @@ export interface ResearchEntry {
   response_tokens: number;
   embedding: number[];
   replaces_id?: string;
+  started_from_ids?: string[];
 }
 
 export interface SearchResult {
@@ -260,6 +261,7 @@ export async function insertResearch(entry: ResearchEntry): Promise<InsertResult
       response_tokens: entry.response_tokens,
       embedding: JSON.stringify(entry.embedding),
       replaces_id: entry.replaces_id ?? null,
+      started_from_ids: entry.started_from_ids ?? [],
       version,
       is_current: true,
     })

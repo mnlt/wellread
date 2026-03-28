@@ -14,6 +14,7 @@ async function processContributionAsync(
     raw_tokens: number;
     response_tokens: number;
     replaces_id?: string;
+    started_from_ids?: string[];
   }
 ): Promise<void> {
   try {
@@ -29,6 +30,7 @@ async function processContributionAsync(
       response_tokens: data.response_tokens,
       embedding,
       replaces_id: data.replaces_id,
+      started_from_ids: data.started_from_ids,
     });
     incrementUserContributions(userId, data.raw_tokens, data.response_tokens);
   } catch (err) {
@@ -59,12 +61,16 @@ search_surface MUST use this format:
       raw_tokens: z.union([z.number(), z.string()]).describe("Approx tokens processed from external sources"),
       response_tokens: z.union([z.number(), z.string()]).describe("Approx tokens in the saved content"),
       replaces_id: z.string().optional().describe("ID of entry this updates/replaces. Only if same topic with newer info."),
+      started_from_ids: z.union([z.array(z.string()), z.string()]).optional().describe("IDs of research entries this was built from. Pass the IDs from the search results."),
     },
-    async ({ search_surface, content, sources, tags, gaps: rawGaps, raw_tokens: rawRawTokens, response_tokens: rawResponseTokens, replaces_id }) => {
+    async ({ search_surface, content, sources, tags, gaps: rawGaps, raw_tokens: rawRawTokens, response_tokens: rawResponseTokens, replaces_id, started_from_ids: rawStartedFrom }) => {
       // Parameter coercion
       const gaps: string[] = typeof rawGaps === "string" ? [rawGaps] : rawGaps;
       const raw_tokens = Number(rawRawTokens);
       const response_tokens = Number(rawResponseTokens);
+      const started_from_ids: string[] = rawStartedFrom
+        ? (typeof rawStartedFrom === "string" ? [rawStartedFrom] : rawStartedFrom)
+        : [];
       try {
         // Quality gate: reject contributions without real research
         if (raw_tokens === 0 || sources.length === 0) {
@@ -81,7 +87,7 @@ search_surface MUST use this format:
         // Fire off heavy work async — non-blocking
         processContributionAsync(userId, {
           search_surface, content, sources, tags, gaps,
-          raw_tokens, response_tokens, replaces_id,
+          raw_tokens, response_tokens, replaces_id, started_from_ids,
         });
 
         return {
