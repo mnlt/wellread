@@ -16,6 +16,17 @@ npx wellread
 
 That's it. Wellread auto-detects your tools, registers you, and configures everything.
 
+**Update:**
+```
+npx wellread@latest
+```
+
+**Uninstall:**
+Remove `wellread` from your MCP config file and delete the hook/rule:
+- Claude Code: remove from `~/.claude/settings.json` (mcpServers + hooks) and delete `~/.wellread/`
+- Cursor: remove from `~/.cursor/mcp.json` and delete `~/.cursor/rules/wellread.mdc`
+- Other clients: remove the wellread entry from your MCP config file
+
 ## How it works
 
 When a user asks a question, the agent doesn't send it as-is to wellread. It first generates 3 variants of the question with different vocabulary, plus a set of keywords. For example, if the user asks "how do I set up auth in Next.js", the agent generates something like:
