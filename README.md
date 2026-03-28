@@ -16,16 +16,15 @@ npx wellread
 
 That's it. Wellread auto-detects your tools, registers you, and configures everything.
 
-**Update:**
+**Quick update:**
 ```
 npx wellread@latest
 ```
 
-**Uninstall:**
-Remove `wellread` from your MCP config file and delete the hook/rule:
-- Claude Code: remove from `~/.claude/settings.json` (mcpServers + hooks) and delete `~/.wellread/`
-- Cursor: remove from `~/.cursor/mcp.json` and delete `~/.cursor/rules/wellread.mdc`
-- Other clients: remove the wellread entry from your MCP config file
+**Quick uninstall:**
+```
+npx wellread uninstall
+```
 
 ## How it works
 

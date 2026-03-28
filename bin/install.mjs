@@ -384,7 +384,129 @@ async function main() {
   log("");
 }
 
-main().catch((err) => {
-  console.error("Error:", err.message);
-  process.exit(1);
-});
+// ── Uninstall ────────────────────────────────────────────
+
+async function uninstall() {
+  log("");
+  log(bold("  wellread uninstall"));
+  log("");
+
+  // Claude Code
+  const claudeJsonPath = join(HOME, ".claude.json");
+  if (existsSync(claudeJsonPath)) {
+    const config = readJSON(claudeJsonPath);
+    if (config.mcpServers?.wellread) {
+      delete config.mcpServers.wellread;
+      writeFileSync(claudeJsonPath, JSON.stringify(config, null, 2));
+      success("Claude Code (.claude.json)");
+    }
+  }
+
+  const claudeSettingsPath = join(HOME, ".claude", "settings.json");
+  if (existsSync(claudeSettingsPath)) {
+    const config = readJSON(claudeSettingsPath);
+    let changed = false;
+    if (config.mcpServers?.wellread) {
+      delete config.mcpServers.wellread;
+      changed = true;
+    }
+    if (config.hooks?.UserPromptSubmit) {
+      config.hooks.UserPromptSubmit = config.hooks.UserPromptSubmit.filter(
+        (h) => !JSON.stringify(h).includes("wellread")
+      );
+      changed = true;
+    }
+    if (changed) {
+      writeFileSync(claudeSettingsPath, JSON.stringify(config, null, 2));
+      success("Claude Code (settings.json + hook)");
+    }
+  }
+
+  // Cursor
+  const cursorMcpPath = join(HOME, ".cursor", "mcp.json");
+  if (existsSync(cursorMcpPath)) {
+    const config = readJSON(cursorMcpPath);
+    if (config.mcpServers?.wellread) {
+      delete config.mcpServers.wellread;
+      writeFileSync(cursorMcpPath, JSON.stringify(config, null, 2));
+    }
+  }
+  const cursorRulePath = join(HOME, ".cursor", "rules", "wellread.mdc");
+  if (existsSync(cursorRulePath)) {
+    const { unlinkSync } = await import("fs");
+    unlinkSync(cursorRulePath);
+    success("Cursor");
+  }
+
+  // Windsurf
+  const windsurfMcpPath = join(HOME, ".codeium", "windsurf", "mcp_config.json");
+  if (existsSync(windsurfMcpPath)) {
+    const config = readJSON(windsurfMcpPath);
+    if (config.mcpServers?.wellread) {
+      delete config.mcpServers.wellread;
+      writeFileSync(windsurfMcpPath, JSON.stringify(config, null, 2));
+      success("Windsurf");
+    }
+  }
+
+  // Gemini CLI
+  const geminiPath = join(HOME, ".gemini", "settings.json");
+  if (existsSync(geminiPath)) {
+    const config = readJSON(geminiPath);
+    if (config.mcpServers?.wellread) {
+      delete config.mcpServers.wellread;
+      writeFileSync(geminiPath, JSON.stringify(config, null, 2));
+      success("Gemini CLI");
+    }
+  }
+
+  // VS Code
+  const vscodeMcpPath = join(HOME, ".vscode", "mcp.json");
+  if (existsSync(vscodeMcpPath)) {
+    const config = readJSON(vscodeMcpPath);
+    if (config.servers?.wellread) {
+      delete config.servers.wellread;
+      writeFileSync(vscodeMcpPath, JSON.stringify(config, null, 2));
+      success("VS Code");
+    }
+  }
+  const copilotRulePath = join(HOME, ".copilot", "instructions", "wellread.instructions.md");
+  if (existsSync(copilotRulePath)) {
+    const { unlinkSync } = await import("fs");
+    unlinkSync(copilotRulePath);
+  }
+
+  // OpenCode
+  const opencodePath = join(HOME, ".config", "opencode", "opencode.json");
+  if (existsSync(opencodePath)) {
+    const config = readJSON(opencodePath);
+    if (config.mcp?.wellread) {
+      delete config.mcp.wellread;
+      writeFileSync(opencodePath, JSON.stringify(config, null, 2));
+      success("OpenCode");
+    }
+  }
+  const opencodeRulePath = join(HOME, ".config", "opencode", "rules", "wellread.md");
+  if (existsSync(opencodeRulePath)) {
+    const { unlinkSync } = await import("fs");
+    unlinkSync(opencodeRulePath);
+  }
+
+  // Wellread hook dir
+  const wellreadDir = join(HOME, ".wellread");
+  if (existsSync(wellreadDir)) {
+    const { rmSync } = await import("fs");
+    rmSync(wellreadDir, { recursive: true });
+  }
+
+  log("");
+  log(green("  ✓ Wellread removed. Restart your editor/CLI to complete."));
+  log("");
+}
+
+const cmd = process.argv[2];
+if (cmd === "uninstall") {
+  uninstall().catch((err) => { console.error("Error:", err.message); process.exit(1); });
+} else {
+  main().catch((err) => { console.error("Error:", err.message); process.exit(1); });
+}
