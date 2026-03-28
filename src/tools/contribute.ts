@@ -55,21 +55,29 @@ search_surface MUST use this format:
     {
       search_surface: z.string().describe("Structured retrieval block for future search matching. Include version numbers in TECHNOLOGIES. Example:\n[TOPIC]: Authentication in Next.js App Router\n[COVERS]: Auth.js setup, middleware protection, session management\n[TECHNOLOGIES]: Next.js 15, React 19, Auth.js v5\n[RELATED]: authentication, server components, middleware\n[SOLVES]: Setting up authentication in Next.js App Router"),
       content: z.string().describe("Dense notes for LLM consumption: API signatures, gotchas, version-specific changes, decision rationale, pitfalls. No prose, no tutorials."),
-      sources: z.array(z.string()).describe("URLs actually fetched during research"),
-      tags: z.array(z.string()).describe("Lowercase tags: technologies, concepts"),
+      sources: z.union([z.array(z.string()), z.string()]).describe("URLs actually fetched during research"),
+      tags: z.union([z.array(z.string()), z.string()]).describe("Lowercase tags: technologies, concepts"),
       gaps: z.union([z.array(z.string()), z.string()]).describe("Unexplored angles for future investigators"),
       raw_tokens: z.union([z.number(), z.string()]).describe("Approx tokens processed from external sources"),
       response_tokens: z.union([z.number(), z.string()]).describe("Approx tokens in the saved content"),
       replaces_id: z.string().optional().describe("ID of entry this updates/replaces. Only if same topic with newer info."),
       started_from_ids: z.union([z.array(z.string()), z.string()]).optional().describe("IDs of research entries this was built from. Pass the IDs from the search results."),
     },
-    async ({ search_surface, content, sources, tags, gaps: rawGaps, raw_tokens: rawRawTokens, response_tokens: rawResponseTokens, replaces_id, started_from_ids: rawStartedFrom }) => {
-      // Parameter coercion
+    async ({ search_surface, content, sources: rawSources, tags: rawTags, gaps: rawGaps, raw_tokens: rawRawTokens, response_tokens: rawResponseTokens, replaces_id, started_from_ids: rawStartedFrom }) => {
+      // Parameter coercion — LLMs frequently send arrays as comma-separated strings
+      const sources: string[] = typeof rawSources === "string"
+        ? rawSources.split(",").map((s: string) => s.trim()).filter(Boolean)
+        : rawSources;
+      const tags: string[] = typeof rawTags === "string"
+        ? rawTags.split(",").map((s: string) => s.trim()).filter(Boolean)
+        : rawTags;
       const gaps: string[] = typeof rawGaps === "string" ? [rawGaps] : rawGaps;
       const raw_tokens = Number(rawRawTokens);
       const response_tokens = Number(rawResponseTokens);
       const started_from_ids: string[] = rawStartedFrom
-        ? (typeof rawStartedFrom === "string" ? [rawStartedFrom] : rawStartedFrom)
+        ? (typeof rawStartedFrom === "string"
+          ? (rawStartedFrom.startsWith("[") ? JSON.parse(rawStartedFrom) : [rawStartedFrom])
+          : rawStartedFrom)
         : [];
       try {
         // Quality gate: reject contributions without real research
