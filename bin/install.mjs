@@ -378,8 +378,7 @@ async function main() {
   }
 
   log("");
-  log(green("  Done. wellread is active."));
-  log(dim("  Restart your editor/CLI to connect."));
+  log(green("  ✓ Done. Restart your editor/CLI to activate wellread."));
   log("");
 }
 
