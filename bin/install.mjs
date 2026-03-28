@@ -377,8 +377,10 @@ async function main() {
   }
 
   log("");
-  log(green("  ✓ Done. Restart your editor/CLI to activate wellread."));
-  log(`  👉 Triggers automatically, or type ${bold("\"use wellread\"")} in any prompt.`);
+  log(green("  ✓ Done."));
+  log("");
+  log(`  1️⃣  Restart your editor/CLI to activate`);
+  log(`  2️⃣  Type ${bold("\"use wellread\"")} in any prompt — or let it trigger automatically`);
   log("");
 }
 
