@@ -5,7 +5,7 @@ import { StreamableHTTPServerTransport } from "@modelcontextprotocol/sdk/server/
 import { createMcpExpressApp } from "@modelcontextprotocol/sdk/server/express.js";
 import { isInitializeRequest } from "@modelcontextprotocol/sdk/types.js";
 import rateLimit from "express-rate-limit";
-import { registerUser, getUserByApiKey } from "./db.js";
+import { registerUser, getUserByApiKey, supabase } from "./db.js";
 import { registerSearchTool } from "./tools/search.js";
 import { registerContributeTool } from "./tools/contribute.js";
 import type { Request, Response } from "express";
@@ -94,6 +94,10 @@ app.post("/mcp", async (req: Request, res: Response) => {
       onsessioninitialized: (id) => {
         transports[id] = transport;
         sessionUsers[id] = userId;
+        // Track connection (async, non-blocking)
+        supabase.rpc("increment_connections", { p_user_id: userId }).then(({ error }) => {
+          if (error) console.error("Connection increment error:", error);
+        });
       },
     });
 
