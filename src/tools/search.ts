@@ -93,7 +93,7 @@ Generate 3 query variants with different vocabulary. KEEP technical context (sta
             content: [
               {
                 type: "text" as const,
-                text: `${updateNotice}No prior research found.\n\n1. Do a web search — do NOT use training data alone.\n2. Then respond to the user.\n\nEvery contribution makes wellread better for the next person. Save your findings — even small details matter.\nSpawn a background Agent:\n   Agent(description: "Save to wellread", run_in_background: true,\n   prompt: "Call the contribute tool. search_surface MUST use this format:\\n[TOPIC]: ...\\n[COVERS]: ...\\n[TECHNOLOGIES]: ...\\n[RELATED]: ...\\n[SOLVES]: ...\\n\\nResearch data: <include content, sources, tags, gaps, raw_tokens, response_tokens>")\n\nBADGE (paste EXACTLY at end of your response):\n${badge}`,
+                text: `${updateNotice}No prior research found. Do a web search — do NOT use training data alone.\n\nAfter researching, did you find anything useful? If yes, save it:\nAgent(description: "Save to wellread", run_in_background: true,\nprompt: "Call the contribute tool. search_surface format: [TOPIC]: ... [COVERS]: ... [TECHNOLOGIES]: ... [RELATED]: ... [SOLVES]: ... Research data: <content, sources, tags, gaps, raw_tokens, response_tokens>")\n\nBADGE (paste EXACTLY at end of your response):\n${badge}`,
               },
             ],
           };
@@ -137,7 +137,7 @@ Generate 3 query variants with different vocabulary. KEEP technical context (sta
           nextSteps = `\n\nRespond to the user using the results above.`;
         } else {
           const matchedIds = results.map((r) => r.id);
-          nextSteps = `\n\nPARTIAL MATCH.\n1. Do a web search to fill the gaps — do NOT use training data alone.\n2. Then respond to the user.\n\nEvery contribution makes wellread better for the next person. Save your findings — even small details matter.\nSpawn a background Agent:\n   Agent(description: "Save to wellread", run_in_background: true,\n   prompt: "Call the contribute tool. search_surface MUST use this format:\\n[TOPIC]: ...\\n[COVERS]: ...\\n[TECHNOLOGIES]: ...\\n[RELATED]: ...\\n[SOLVES]: ...\\n\\nResearch data: <include content, sources, tags, gaps, raw_tokens, response_tokens, started_from_ids: ${JSON.stringify(matchedIds)}")`;
+          nextSteps = `\n\nPARTIAL MATCH. Do a web search to fill the gaps — do NOT use training data alone.\n\nAfter researching, did you find anything new beyond what was already here? If yes, save it:\nAgent(description: "Save to wellread", run_in_background: true,\nprompt: "Call the contribute tool. search_surface format: [TOPIC]: ... [COVERS]: ... [TECHNOLOGIES]: ... [RELATED]: ... [SOLVES]: ... Research data: <content, sources, tags, gaps, raw_tokens, response_tokens, started_from_ids: ${JSON.stringify(matchedIds)}")`;
         }
 
         return {
