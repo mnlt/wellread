@@ -378,8 +378,7 @@ async function main() {
 
   log("");
   log(green("  ✓ Done. Restart your editor/CLI to activate wellread."));
-  log(`  Your agent will use wellread automatically.`);
-  log(`  You can also type ${bold("\"use wellread\"")} in any prompt to trigger it.`);
+  log(`  👉 Triggers automatically, or type ${bold("\"use wellread\"")} in any prompt.`);
   log("");
 }
 
