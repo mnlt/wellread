@@ -9,6 +9,9 @@ A shared knowledge base for AI agents. Your agent checks wellread before searchi
 
 ```
 npx wellread
+
+# 1. Restart your editor/CLI to activate
+# 2. Type "use wellread" in any prompt — or let it trigger automatically
 ```
 
 That's it. Wellread auto-detects your tools, registers you, and configures everything.
