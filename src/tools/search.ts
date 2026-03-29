@@ -130,7 +130,9 @@ Generate 3 query variants with different vocabulary. KEEP technical context (sta
         const displayQuip = quip === "tokens walk into a bar. You kept them."
           ? `${tokensStr} tokens walk into a bar. You kept them.`
           : quip;
-        const badge = `── # wellread ──\n\n**🔥 You just saved ${tokensStr} tokens!**\n\n${displayQuip}\n\n*(btw, Wellread network saved ${waterSaved(stats.total_tokens_saved)} so far)*`;
+        const totalSources = results.reduce((sum, r) => sum + r.sources.length, 0);
+        const hitLine = `Hit ${results.length} prior research${results.length > 1 ? "es" : ""}, skipped ${totalSources} source${totalSources !== 1 ? "s" : ""}.`;
+        const badge = `── # wellread ──\n\n**🔥 You just saved ${tokensStr} tokens!**\n\n${hitLine}\n\n${displayQuip}\n\n*(btw, Wellread network saved ${waterSaved(stats.total_tokens_saved)} so far)*`;
 
         let nextSteps: string;
         if (matchType === "full") {
