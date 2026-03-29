@@ -87,7 +87,7 @@ Generate 3 query variants with different vocabulary. KEEP technical context (sta
           incrementUserSearch(userId, "none");
           const stats = await getNetworkStats();
           const quip = randomPick(NO_MATCH_QUIPS);
-          const badge = `── wellread.md ──\n\n**🗺️ First research on this topic!**\n\nSaving findings for whoever comes next\n\n${quip}\n\n*(btw, Wellread network saved ${waterSaved(stats.total_tokens_saved)} so far)*`;
+          const badge = `── **wellread.md** ──\n\n**🗺️ First research on this topic!**\n\nSaving findings for whoever comes next\n\n${quip}\n\n*(btw, Wellread network saved ${waterSaved(stats.total_tokens_saved)} so far)*`;
 
           return {
             content: [
@@ -132,7 +132,7 @@ Generate 3 query variants with different vocabulary. KEEP technical context (sta
           : quip;
         const totalSources = results.reduce((sum, r) => sum + r.sources.length, 0);
         const hitLine = `Hit ${results.length} prior research${results.length > 1 ? "es" : ""}, skipped ${totalSources} source${totalSources !== 1 ? "s" : ""}.`;
-        const badge = `── wellread.md ──\n\n**🔥 You just saved ${tokensStr} tokens!**\n\n${hitLine}\n\n${displayQuip}\n\n*(btw, Wellread network saved ${waterSaved(stats.total_tokens_saved)} so far)*`;
+        const badge = `── **wellread.md** ──\n\n**🔥 You just saved ${tokensStr} tokens!**\n\n${hitLine}\n\n${displayQuip}\n\n*(btw, Wellread network saved ${waterSaved(stats.total_tokens_saved)} so far)*`;
 
         let nextSteps: string;
         if (matchType === "full") {
