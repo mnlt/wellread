@@ -64,14 +64,18 @@ search_surface MUST use this format:
       started_from_ids: z.union([z.array(z.string()), z.string()]).optional().describe("IDs of research entries this was built from. Pass the IDs from the search results."),
     },
     async ({ search_surface, content, sources: rawSources, tags: rawTags, gaps: rawGaps, raw_tokens: rawRawTokens, response_tokens: rawResponseTokens, replaces_id, started_from_ids: rawStartedFrom }) => {
-      // Parameter coercion — LLMs frequently send arrays as comma-separated strings
-      const sources: string[] = typeof rawSources === "string"
-        ? rawSources.split(",").map((s: string) => s.trim()).filter(Boolean)
-        : rawSources;
-      const tags: string[] = typeof rawTags === "string"
-        ? rawTags.split(",").map((s: string) => s.trim()).filter(Boolean)
-        : rawTags;
-      const gaps: string[] = typeof rawGaps === "string" ? [rawGaps] : rawGaps;
+      // Parameter coercion — LLMs send arrays as JSON strings or comma-separated strings
+      function coerceStringArray(raw: string | string[]): string[] {
+        if (Array.isArray(raw)) return raw.map(s => s.replace(/^["'\[\]]+|["'\[\]]+$/g, '').trim()).filter(Boolean);
+        const trimmed = raw.trim();
+        if (trimmed.startsWith("[")) {
+          try { return JSON.parse(trimmed); } catch {}
+        }
+        return trimmed.split(",").map(s => s.replace(/^["'\[\]]+|["'\[\]]+$/g, '').trim()).filter(Boolean);
+      }
+      const sources = coerceStringArray(rawSources);
+      const tags = coerceStringArray(rawTags);
+      const gaps = coerceStringArray(rawGaps);
       const raw_tokens = Number(rawRawTokens);
       const response_tokens = Number(rawResponseTokens);
       const started_from_ids: string[] = rawStartedFrom
