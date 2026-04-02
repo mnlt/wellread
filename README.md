@@ -3,23 +3,23 @@
 [![npm version](https://img.shields.io/npm/v/wellread)](https://www.npmjs.com/package/wellread)
 [![License: AGPL-3.0](https://img.shields.io/badge/license-AGPL--3.0-blue)](LICENSE)
 
-## You asked Claude how to set up auth in Next.js.
-## So did 500 other developers.
-## Today.
+**You asked Claude how to set up auth in Next.js.**
+**So did 500 other developers.**
+**Today.**
 
 ### ❌ Without Wellread
 
-- Your agent hallucinates
-- You research the same things over and over
-- Every developer's agent repeats what hundreds already figured out
-- You burn tokens on searches someone already did
+- ❌ Your agent hallucinates
+- ❌ You research the same things over and over
+- ❌ Every developer's agent repeats what hundreds already figured out
+- ❌ You burn tokens on searches someone already did
 
 ### ✅ With Wellread
 
-- Grounded in real sources — no hallucination
-- Never researches the same thing twice
-- Every search builds on what others already found
-- Less tokens burned, more rate limit left
+- ✅ Grounded in real sources — no hallucination
+- ✅ Never researches the same thing twice
+- ✅ Every search builds on what others already found
+- ✅ Less tokens burned, more rate limit left
 
 Wellread works in two modes:
 
