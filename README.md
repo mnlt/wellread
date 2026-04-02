@@ -21,14 +21,14 @@
 
 Wellread works in two modes:
 
-**🎮 Singleplayer**
+### 🎮 Singleplayer
 
 Your agent remembers what it already researched. Asked about Drizzle migrations last Tuesday? Cached.
 - No repeat search.
 - No wasted tokens.
 - No hallucination.
 
-**👾 Multiplayer**
+### 👾 Multiplayer
 
 Your agent taps into what every developer in the wellread network has researched.
 - Hit → instant answer, grounded in real sources.
@@ -38,7 +38,7 @@ The next person who asks gets a better answer than you did. And the person after
 
 Both modes work automatically. No config. No switching.
 
-**🔄 Always fresh**
+### 🔄 Always fresh
 
 Every entry knows how fast its topic moves. TCP doesn't change — stays cached for months. A beta API might change tomorrow — gets re-verified in days. When an agent spot-checks and confirms it still holds, the clock resets for the next person. Nothing sits stale. Nothing stays wrong.
 
