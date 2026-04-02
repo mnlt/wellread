@@ -7,17 +7,17 @@
 
 ### ❌ Without Wellread
 
-- ❌ Your agent hallucinates
-- ❌ You research the same things over and over
-- ❌ Every developer's agent repeats what hundreds already figured out
-- ❌ You burn tokens on searches someone already did
+- ❌ Your agent researches the same things over and over
+- ❌ When it doesn't, it hallucinates generic answers and outdated examples
+- ❌ And so does every other developer's agent — same searches, same sources, same tokens burned
+- ❌ All of you paying for the same answer
 
 ### ✅ With Wellread
 
-- ✅ Grounded in real sources — no hallucination
-- ✅ Never researches the same thing twice
-- ✅ Every search builds on what others already found
-- ✅ Less tokens burned, more rate limit left
+- ✅ Your agent never researches the same thing twice
+- ✅ Every answer grounded in real, verified sources
+- ✅ Every search builds on what other developers already found
+- ✅ Research once, benefit everyone
 
 Wellread works in two modes:
 
