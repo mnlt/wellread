@@ -1,8 +1,8 @@
 import { z } from "zod";
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { generateEmbedding } from "../embeddings.js";
-import { hybridSearch, logSearch, getNetworkStats, incrementUserSearch, supabase } from "../db.js";
-import { waterSaved, formatTokens, randomPick } from "../utils.js";
+import { hybridSearch, logSearch, incrementUserSearch, supabase } from "../db.js";
+import { formatTokens, randomPick } from "../utils.js";
 import { computeFreshness, type FreshnessLabel, type Volatility } from "../freshness.js";
 
 const CURRENT_HOOK_VERSION = 5;
@@ -92,9 +92,8 @@ Generate 3 query variants with different vocabulary. KEEP technical context (sta
 
         if (results.length === 0) {
           incrementUserSearch(userId, "none");
-          const stats = await getNetworkStats();
           const quip = randomPick(NO_MATCH_QUIPS);
-          const badge = `── **wellread.md** ──\n\n**🗺️ First research on this topic!**\n\nSaving findings for whoever comes next\n\n${quip}\n\n*(btw, Wellread network saved ${waterSaved(stats.total_tokens_saved)} so far)*`;
+          const badge = `── **wellread.md** ──\n\n**🗺️ First research on this topic!**\n\nSaving findings for whoever comes next\n\n${quip}\n\n*Say "show me my wellread stats" to see your karma and impact*`;
 
           return {
             content: [
@@ -144,7 +143,6 @@ Generate 3 query variants with different vocabulary. KEEP technical context (sta
         incrementUserSearch(userId, effectiveMatch, tokensSavedForUser);
 
         const totalRawTokens = results.reduce((sum, r) => sum + r.raw_tokens, 0);
-        const stats = await getNetworkStats();
 
         // Badge — same for full and partial match
         const quip = randomPick(MATCH_QUIPS);
@@ -155,7 +153,7 @@ Generate 3 query variants with different vocabulary. KEEP technical context (sta
           : quip;
         const totalSources = results.reduce((sum, r) => sum + r.sources.length, 0);
         const hitLine = `Hit ${results.length} prior research${results.length > 1 ? "es" : ""}, skipped ${totalSources} source${totalSources !== 1 ? "s" : ""}.`;
-        const badge = `── **wellread.md** ──\n\n**🔥 You just saved ${tokensStr} tokens!**\n\n${hitLine}\n\n${displayQuip}\n\n*(btw, Wellread network saved ${waterSaved(stats.total_tokens_saved)} so far)*`;
+        const badge = `── **wellread.md** ──\n\n**🔥 You just saved ${tokensStr} tokens!**\n\n${hitLine}\n\n${displayQuip}\n\n*Say "show me my wellread stats" to see your karma and impact*`;
 
         const matchedIds = results.map((r) => r.id);
         let nextSteps: string;

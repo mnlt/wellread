@@ -87,28 +87,63 @@ export function registerStatsTool(server: McpServer, userId: string) {
           ? topTags.map(([tag, count]) => `${tag} (${count})`).join(" · ")
           : "none yet";
 
+        // Top cited research entries
+        const { data: topCited } = await supabase
+          .from("research")
+          .select("search_surface, match_count")
+          .eq("user_id", userId)
+          .eq("is_current", true)
+          .gt("match_count", 0)
+          .order("match_count", { ascending: false })
+          .limit(3);
+
+        const topCitedLines = (topCited ?? []).map((r) => {
+          const topic = (r.search_surface ?? "")
+            .split("\n")[0]
+            .replace(/^\[TOPIC\]:\s*/i, "")
+            .toLowerCase()
+            .slice(0, 45);
+          return `│ "${topic}" → cited **${r.match_count}** times`;
+        });
+
+        // Bar chart helper
+        const BAR_WIDTH = 16;
+        const maxTagCount = topTags.length > 0 ? topTags[0][1] : 1;
+        const tagBars = topTags.slice(0, 5).map(([tag, count]) => {
+          const filled = Math.round((count / maxTagCount) * BAR_WIDTH);
+          const empty = BAR_WIDTH - filled;
+          const label = tag.length > 12 ? tag.slice(0, 12) : tag.padEnd(12);
+          return `│ ${label}  ${"█".repeat(filled)}${"░".repeat(empty)}  ${count} entries`;
+        });
+
+        // Tokens display (M or K)
+        const tokensSavedDisplay = stats.tokens_kept >= 1_000_000
+          ? `${(stats.tokens_kept / 1_000_000).toFixed(1)}M`
+          : `${Math.round(stats.tokens_kept / 1000)}K`;
+
         // Format the response
-        const output = `
-▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓
-  **wellread** · ${displayName}
-  ${karma.toLocaleString()} karma · ${days} day${days !== 1 ? "s" : ""} in
-▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓
+        const output = `── **wellread.md** stats ──────────────────────
+
+  ${displayName} · **${karma.toLocaleString()}** karma · ${days} day${days !== 1 ? "s" : ""} in
 
 ⚡ **YOU SAVED**
-│ ${hitCount} search${hitCount !== 1 ? "es" : ""} you didn't have to do${stats.search_count > 0 ? ` · ${hitRate}% hit rate` : ""}
-│ ${Math.round(stats.tokens_kept / 1000)}K tokens saved
-│ ${waterSaved(stats.tokens_kept)} kept in the river 💧
+│ **${hitCount}** search${hitCount !== 1 ? "es" : ""} you didn't have to do${stats.search_count > 0 ? ` · **${hitRate}%** hit rate` : ""}
+│ **${tokensSavedDisplay}** tokens saved
+│ **${waterSaved(stats.tokens_kept)}** kept in the river 💧
 
-🔬 **YOU GAVE BACK**
-│ ${stats.contribution_count} research entr${stats.contribution_count !== 1 ? "ies" : "y"} published
-│ Used by others ${stats.citations_count} time${stats.citations_count !== 1 ? "s" : ""}
-│ ${topTags.length > 0 ? `Greatest hits: ${tagsLine}` : "Start contributing to build your profile"}
+🚀 **YOU GAVE BACK**
+│ **${stats.contribution_count}** research entr${stats.contribution_count !== 1 ? "ies" : "y"} published
+│ Helped others **${stats.citations_count}** time${stats.citations_count !== 1 ? "s" : ""}
+│
+${tagBars.length > 0 ? `│ You write about\n${tagBars.join("\n")}\n│` : "│"}
+${topCitedLines.length > 0 ? `│ Others found most useful\n${topCitedLines.join("\n")}` : "│ Start contributing to build your profile"}
 
-🌐 **THE NETWORK**
-│ ${network.total_contributions} entries · ${waterSaved(network.total_tokens_saved)} saved
-${networkContribPct > 0 ? `│ You're ${networkContribPct}% of this network's brain 🧠` : "│"}
+🌍 **THE NETWORK**
+│ **${network.total_contributions}** entries
+│ **${waterSaved(network.total_tokens_saved)}** saved by the community 💧
+${networkContribPct > 0 ? `│ You're **${networkContribPct}%** of this network's brain 🧠` : "│"}
 
-*Every research you save is one less someone else has to do.*`;
+──────────────────────────────────────────────`;
 
         return {
           content: [{ type: "text" as const, text: output }],
