@@ -3,7 +3,7 @@
 [![npm version](https://img.shields.io/npm/v/wellread)](https://www.npmjs.com/package/wellread)
 [![License: AGPL-3.0](https://img.shields.io/badge/license-AGPL--3.0-blue)](LICENSE)
 
-**You asked Claude how to set up auth in Next.js.**
+**You asked your agent how to set up auth in Next.js.**
 **So did 500 other developers.**
 **Today.**
 
