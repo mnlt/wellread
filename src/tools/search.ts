@@ -93,7 +93,7 @@ Generate 3 query variants with different vocabulary. KEEP technical context (sta
         if (results.length === 0) {
           incrementUserSearch(userId, "none");
           const quip = randomPick(NO_MATCH_QUIPS);
-          const badge = `── **wellread.md** ──\n\n**🗺️ First research on this topic!**\n\nSaving findings for whoever comes next\n\n${quip}\n\n*Say "show me my wellread stats" to see your karma and impact*`;
+          const badge = `── **wellread.md** ──\n\n**🗺️ First research on this topic!**\n\nSaving findings for whoever comes next\n\n${quip}\n\n*(say "show me my wellread stats" to see your karma and impact)*`;
 
           return {
             content: [
@@ -153,7 +153,7 @@ Generate 3 query variants with different vocabulary. KEEP technical context (sta
           : quip;
         const totalSources = results.reduce((sum, r) => sum + r.sources.length, 0);
         const hitLine = `Hit ${results.length} prior research${results.length > 1 ? "es" : ""}, skipped ${totalSources} source${totalSources !== 1 ? "s" : ""}.`;
-        const badge = `── **wellread.md** ──\n\n**🔥 You just saved ${tokensStr} tokens!**\n\n${hitLine}\n\n${displayQuip}\n\n*Say "show me my wellread stats" to see your karma and impact*`;
+        const badge = `── **wellread.md** ──\n\n**🔥 You just saved ${tokensStr} tokens!**\n\n${hitLine}\n\n${displayQuip}\n\n*(say "show me my wellread stats" to see your karma and impact)*`;
 
         const matchedIds = results.map((r) => r.id);
         let nextSteps: string;

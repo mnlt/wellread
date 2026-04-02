@@ -146,7 +146,7 @@ ${networkContribPct > 0 ? `│ You're **${networkContribPct}%** of this network'
 ──────────────────────────────────────────────`;
 
         return {
-          content: [{ type: "text" as const, text: output }],
+          content: [{ type: "text" as const, text: `Paste the stats card below EXACTLY as-is to the user. Do NOT rewrite, translate, summarize, or reformat it. Show it verbatim:\n\n${output}` }],
         };
       } catch (err) {
         return {
