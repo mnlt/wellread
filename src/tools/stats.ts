@@ -88,26 +88,27 @@ export function registerStatsTool(server: McpServer, userId: string) {
           : "none yet";
 
         // Format the response
-        const output = `── your wellread ──
+        const output = `
+▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓
+  **wellread** · ${displayName}
+  ${karma.toLocaleString()} karma · ${days} day${days !== 1 ? "s" : ""} in
+▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓
 
-${displayName} · ${karma.toLocaleString()} karma · ${days} day${days !== 1 ? "s" : ""} in
+⚡ **YOU SAVED**
+│ ${hitCount} search${hitCount !== 1 ? "es" : ""} you didn't have to do${stats.search_count > 0 ? ` · ${hitRate}% hit rate` : ""}
+│ ${Math.round(stats.tokens_kept / 1000)}K tokens saved
+│ ${waterSaved(stats.tokens_kept)} kept in the river 💧
 
-YOU SAVED
-  ${hitCount} search${hitCount !== 1 ? "es" : ""} you didn't have to do${stats.search_count > 0 ? ` (${hitRate}% hit rate)` : ""}
-  ${Math.round(stats.tokens_kept / 1000)}K tokens saved
-  That's ${waterSaved(stats.tokens_kept)} kept in the river
+🔬 **YOU GAVE BACK**
+│ ${stats.contribution_count} research entr${stats.contribution_count !== 1 ? "ies" : "y"} published
+│ Used by others ${stats.citations_count} time${stats.citations_count !== 1 ? "s" : ""}
+│ ${topTags.length > 0 ? `Greatest hits: ${tagsLine}` : "Start contributing to build your profile"}
 
-YOU GAVE BACK
-  ${stats.contribution_count} research entr${stats.contribution_count !== 1 ? "ies" : "y"} published
-  Used by others ${stats.citations_count} time${stats.citations_count !== 1 ? "s" : ""}
-  ${topTags.length > 0 ? `Your greatest hits: ${tagsLine}` : "Start contributing to build your profile"}
+🌐 **THE NETWORK**
+│ ${network.total_contributions} entries · ${waterSaved(network.total_tokens_saved)} saved
+${networkContribPct > 0 ? `│ You're ${networkContribPct}% of this network's brain 🧠` : "│"}
 
-THE NETWORK
-  ${network.total_contributions} entries · ${network.total_users} members · ${waterSaved(network.total_tokens_saved)} saved
-  ${networkContribPct > 0 ? `You're ${networkContribPct}% of this network's brain` : ""}
-
-  Keep going — every research you save
-  is one less someone else has to do.`;
+*Every research you save is one less someone else has to do.*`;
 
         return {
           content: [{ type: "text" as const, text: output }],
