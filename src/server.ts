@@ -8,6 +8,7 @@ import rateLimit from "express-rate-limit";
 import { registerUser, getUserByApiKey, supabase } from "./db.js";
 import { registerSearchTool } from "./tools/search.js";
 import { registerContributeTool } from "./tools/contribute.js";
+import { registerStatsTool } from "./tools/stats.js";
 import type { Request, Response } from "express";
 
 const PORT = parseInt(process.env.PORT || "3000", 10);
@@ -31,6 +32,7 @@ function createServer(userId: string, sessionId: string): McpServer {
 
   registerSearchTool(server, userId, sessionId);
   registerContributeTool(server, userId);
+  registerStatsTool(server, userId);
 
   return server;
 }
