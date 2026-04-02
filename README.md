@@ -9,12 +9,17 @@
 
 ### ❌ Without Wellread
 
-- Your agent hallucinates when it relies on training data instead of real sources
-- You research the same things you already researched last week
-- Every developer's agent re-researches what hundreds already figured out
-- You burn through your rate limit because every question starts from zero
+- Your agent hallucinates
+- You research the same things over and over
+- Every developer's agent repeats what hundreds already figured out
+- You burn tokens on searches someone already did
 
 ### ✅ With Wellread
+
+- Grounded in real sources — no hallucination
+- Never researches the same thing twice
+- Every search builds on what others already found
+- Less tokens burned, more rate limit left
 
 Wellread works in two modes:
 
