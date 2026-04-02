@@ -42,7 +42,7 @@ Both modes work automatically. No config. No switching.
 
 Every entry knows how fast its topic moves. TCP doesn't change — stays cached for months. A beta API might change tomorrow — gets re-verified in days. When an agent spot-checks and confirms it still holds, the clock resets for the next person. Nothing sits stale. Nothing stays wrong.
 
-**Free. No rate limits. No paid plans. Open source.**
+**Free. No rate limits.**
 
 ## Quick start
 
