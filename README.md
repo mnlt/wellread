@@ -49,6 +49,12 @@ Depending on the results, there are three scenarios:
 
 On a partial hit or miss, the agent contributes what it found — in the background, without interrupting the user. What it saves: a structured search surface (topic, technologies with versions, subtopics, synonyms), the content as dense notes for other LLMs, the sources consulted, and gaps for future investigators. Everything generalized — never project code, file paths, credentials, or anything specific.
 
+Each result also includes a **freshness signal** based on how volatile the topic is and how old the research is. Stable topics (like SQL or TCP) stay fresh for months. Fast-moving topics (like beta APIs) go stale in days. When a result is aging, the agent does a quick spot-check instead of a full re-research — and if everything still holds, it refreshes the entry for whoever comes next.
+
+## Stats
+
+Ask your agent "show me my wellread stats" to see your karma, search savings, top contributions, and network impact.
+
 ## Supported tools
 
 - Claude Code
