@@ -3,7 +3,9 @@
 [![npm version](https://img.shields.io/npm/v/wellread)](https://www.npmjs.com/package/wellread)
 [![License: AGPL-3.0](https://img.shields.io/badge/license-AGPL--3.0-blue)](LICENSE)
 
-## You asked Claude how to set up auth in Next.js. So did 500 other developers. Today.
+## You asked Claude how to set up auth in Next.js.
+## So did 500 other developers.
+## Today.
 
 ### ❌ Without Wellread
 
@@ -18,11 +20,16 @@ Wellread works in two modes:
 
 **🎮 Singleplayer**
 
-Your agent remembers what it already researched. Asked about Drizzle migrations last Tuesday? Cached. No repeat search. No wasted tokens. No hallucination.
+Your agent remembers what it already researched. Asked about Drizzle migrations last Tuesday? Cached.
+- No repeat search.
+- No wasted tokens.
+- No hallucination.
 
 **👾 Multiplayer**
 
-Your agent taps into what every developer in the wellread network has researched. Hit → instant answer, grounded in real sources. Miss → your agent researches normally and saves it.
+Your agent taps into what every developer in the wellread network has researched.
+- Hit → instant answer, grounded in real sources.
+- Miss → your agent researches normally and saves it.
 
 The next person who asks gets a better answer than you did. And the person after them gets an even better one. That's the point — wellread doesn't just cache answers, it compounds them.
 
