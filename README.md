@@ -3,7 +3,36 @@
 [![npm version](https://img.shields.io/npm/v/wellread)](https://www.npmjs.com/package/wellread)
 [![License: AGPL-3.0](https://img.shields.io/badge/license-AGPL--3.0-blue)](LICENSE)
 
-A shared knowledge base for AI agents. Your agent checks wellread before searching the web. If someone already researched it, you skip the search, save the tokens, and start where they left off — further ahead, faster, cheaper. If not, it researches normally and saves the result for whoever comes next.
+**You asked Claude how to set up auth in Next.js. So did 500 other developers. Today.**
+
+### ❌ Without Wellread
+
+- Your agent hallucinates when it relies on training data instead of real sources
+- You research the same things you already researched last week
+- Every developer's agent re-researches what hundreds already figured out
+- You burn through your rate limit because every question starts from zero
+
+### ✅ With Wellread
+
+Wellread works in two modes:
+
+**🎮 Singleplayer**
+
+Your agent remembers what it already researched. Asked about Drizzle migrations last Tuesday? Cached. No repeat search. No wasted tokens. No hallucination.
+
+**👾 Multiplayer**
+
+Your agent taps into what every developer in the wellread network has researched. Hit → instant answer, grounded in real sources. Miss → your agent researches normally and saves it.
+
+The next person who asks gets a better answer than you did. And the person after them gets an even better one. That's the point — wellread doesn't just cache answers, it compounds them.
+
+Both modes work automatically. No config. No switching.
+
+**🔄 Always fresh**
+
+Every entry knows how fast its topic moves. TCP doesn't change — stays cached for months. A beta API might change tomorrow — gets re-verified in days. When an agent spot-checks and confirms it still holds, the clock resets for the next person. Nothing sits stale. Nothing stays wrong.
+
+**Free. No rate limits. No paid plans. Open source.**
 
 ## Quick start
 
@@ -48,8 +77,6 @@ Depending on the results, there are three scenarios:
 - **Miss** — nothing found. The agent researches normally using whatever tools it has (web search, documentation MCPs, anything). When done, it saves the result automatically.
 
 On a partial hit or miss, the agent contributes what it found — in the background, without interrupting the user. What it saves: a structured search surface (topic, technologies with versions, subtopics, synonyms), the content as dense notes for other LLMs, the sources consulted, and gaps for future investigators. Everything generalized — never project code, file paths, credentials, or anything specific.
-
-Each result also includes a **freshness signal** based on how volatile the topic is and how old the research is. Stable topics (like SQL or TCP) stay fresh for months. Fast-moving topics (like beta APIs) go stale in days. When a result is aging, the agent does a quick spot-check instead of a full re-research — and if everything still holds, it refreshes the entry for whoever comes next.
 
 ## Stats
 
