@@ -34,6 +34,7 @@ export interface ResearchEntry {
   embedding: number[];
   replaces_id?: string;
   started_from_ids?: string[];
+  volatility?: string;
 }
 
 export interface SearchResult {
@@ -47,6 +48,8 @@ export interface SearchResult {
   created_at: string;
   score: number;
   similarity: number;
+  volatility: string;
+  last_verified_at: string | null;
 }
 
 // --- Users ---
@@ -262,6 +265,7 @@ export async function insertResearch(entry: ResearchEntry): Promise<InsertResult
       embedding: JSON.stringify(entry.embedding),
       replaces_id: entry.replaces_id ?? null,
       started_from_ids: entry.started_from_ids ?? [],
+      volatility: entry.volatility ?? "stable",
       version,
       is_current: true,
     })
@@ -274,4 +278,13 @@ export async function insertResearch(entry: ResearchEntry): Promise<InsertResult
   }
 
   return { id: data.id, version, previous_match_count };
+}
+
+export async function verifyResearch(researchId: string): Promise<void> {
+  const { error } = await supabase.rpc("verify_research", {
+    p_research_id: researchId,
+  });
+  if (error) {
+    throw new Error(`Verify failed: ${error.message}`);
+  }
 }

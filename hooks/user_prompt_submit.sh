@@ -10,14 +10,14 @@ fi
 
 cat <<'EOF'
 ── wellread ──────────────────────────────────
-WELLREAD_HOOK_VERSION: 4
+WELLREAD_HOOK_VERSION: 5
 
 WORKFLOW (execute in order, every response):
 
 STEP 1 — SEARCH (when the question needs knowledge)
   tool: mcp__wellread__search
   required params:
-    hook_version: 4
+    hook_version: 5
     queries: [3 reformulated variants]
     keywords: "space-separated terms"
   ⛔ DO NOT call other tools in parallel with search.
@@ -29,6 +29,12 @@ STEP 1 — SEARCH (when the question needs knowledge)
   again", "what do you think?").
 
 STEP 2 — RESPOND to the user
+  Follow the freshness signal in search results:
+  🟢 fresh → use results directly, no verification needed
+  🟡 check → use results but do ONE quick web search
+     to verify key facts. If confirmed, call contribute
+     with verify_id to refresh the entry for others.
+  🔴 stale → treat as partial match, re-research the topic
 
 STEP 3 — CONTRIBUTE (conditional)
   condition: you used ANY tool besides wellread search
@@ -37,8 +43,11 @@ STEP 3 — CONTRIBUTE (conditional)
   ✅ DO: call contribute in a background Agent
   ⛔ DO NOT: call contribute directly in main thread
   ⛔ DO NOT: skip contribute if you used any tool
+  💡 Set volatility when contributing:
+     timeless / stable / evolving / volatile
 
   skip condition: answered 100% from wellread search
+                  (fresh results, no verification needed)
 
 STEP 4 — BADGE (conditional)
   condition: you called search in THIS turn

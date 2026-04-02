@@ -3,8 +3,15 @@ import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { generateEmbedding } from "../embeddings.js";
 import { hybridSearch, logSearch, getNetworkStats, incrementUserSearch, supabase } from "../db.js";
 import { waterSaved, formatTokens, randomPick } from "../utils.js";
+import { computeFreshness, type FreshnessLabel, type Volatility } from "../freshness.js";
 
-const CURRENT_HOOK_VERSION = 4;
+const CURRENT_HOOK_VERSION = 5;
+
+const FRESHNESS_ICON: Record<FreshnessLabel, string> = {
+  fresh: "\u{1F7E2}",
+  check: "\u{1F7E1}",
+  stale: "\u{1F534}",
+};
 
 const MATCH_QUIPS = [
   "Time saved. Coffee earned.",
@@ -106,19 +113,35 @@ Generate 3 query variants with different vocabulary. KEEP technical context (sta
           )
         );
 
+        // Compute freshness per result
+        const freshnessResults = results.map((r) =>
+          computeFreshness(
+            (r.volatility ?? "stable") as Volatility,
+            r.created_at,
+            r.last_verified_at
+          )
+        );
+
+        // Use the freshness of the top result (highest similarity) — it's what the agent will rely on most
+        const topFreshness = freshnessResults[0].label;
+
         const formatted = results.map((r, i) => {
           const sources = r.sources.length > 0 ? `\nSources: ${r.sources.join(", ")}` : "";
           const gaps = gapsData[i]?.data?.gaps;
           const gapsStr = gaps && gaps.length > 0 ? `\nGaps (unexplored): ${gaps.join(" · ")}` : "";
           const date = r.created_at ? `\nResearched: ${new Date(r.created_at).toISOString().split("T")[0]}` : "";
-          return `--- Result ${i + 1} (id: ${r.id}, similarity: ${r.similarity.toFixed(3)}) ---\n${r.content}${sources}${gapsStr}${date}\nTags: ${r.tags.join(", ")}`;
+          const { label, age_days } = freshnessResults[i];
+          const freshnessStr = `\nFreshness: ${FRESHNESS_ICON[label]} ${label} (${age_days}d old, ${r.volatility ?? "stable"})`;
+          return `--- Result ${i + 1} (id: ${r.id}, similarity: ${r.similarity.toFixed(3)}) ---\n${r.content}${sources}${gapsStr}${date}${freshnessStr}\nTags: ${r.tags.join(", ")}`;
         });
 
         const topSimilarity = results[0].similarity;
-        const matchType = topSimilarity >= 0.65 ? "full" : "partial";
+        const similarityMatch = topSimilarity >= 0.65 ? "full" : "partial";
+        // Freshness can downgrade a full match to partial, but never upgrade
+        const effectiveMatch = (similarityMatch === "full" && topFreshness === "stale") ? "partial" : similarityMatch;
 
         const tokensSavedForUser = Math.max(0, results.reduce((sum, r) => sum + (r.raw_tokens - r.response_tokens), 0));
-        incrementUserSearch(userId, matchType, tokensSavedForUser);
+        incrementUserSearch(userId, effectiveMatch, tokensSavedForUser);
 
         const totalRawTokens = results.reduce((sum, r) => sum + r.raw_tokens, 0);
         const stats = await getNetworkStats();
@@ -134,19 +157,31 @@ Generate 3 query variants with different vocabulary. KEEP technical context (sta
         const hitLine = `Hit ${results.length} prior research${results.length > 1 ? "es" : ""}, skipped ${totalSources} source${totalSources !== 1 ? "s" : ""}.`;
         const badge = `── **wellread.md** ──\n\n**🔥 You just saved ${tokensStr} tokens!**\n\n${hitLine}\n\n${displayQuip}\n\n*(btw, Wellread network saved ${waterSaved(stats.total_tokens_saved)} so far)*`;
 
+        const matchedIds = results.map((r) => r.id);
         let nextSteps: string;
-        if (matchType === "full") {
+
+        if (effectiveMatch === "full" && topFreshness === "fresh") {
+          // High confidence: use directly
           nextSteps = `\n\nRespond to the user using the results above.`;
+        } else if (effectiveMatch === "full" && topFreshness === "check") {
+          // Good match but may be outdated — quick verify
+          const checkIds = results
+            .filter((_, i) => freshnessResults[i].label === "check")
+            .map((r) => r.id);
+          nextSteps = `\n\nRespond using these results, but do ONE web search to spot-check if anything major changed. This is NOT a deep research — just confirm the core facts still hold.\n\nThen in background:\n- Still accurate → Agent(description: "Verify wellread", run_in_background: true, prompt: "Call contribute with verify_id: ${JSON.stringify(checkIds)}")\n- Outdated → Agent(description: "Update wellread", run_in_background: true, prompt: "Call contribute with replaces_id: ${JSON.stringify(checkIds[0])} and the corrected info, sources, volatility")`;
         } else {
-          const matchedIds = results.map((r) => r.id);
-          nextSteps = `\n\nPARTIAL MATCH. Do a web search to fill the gaps — do NOT use training data alone.\n\nAfter researching, did you find anything new beyond what was already here? If yes, save it:\nAgent(description: "Save to wellread", run_in_background: true,\nprompt: "Call the contribute tool. search_surface format: [TOPIC]: ... [COVERS]: ... [TECHNOLOGIES]: ... [RELATED]: ... [SOLVES]: ... Research data: <content, sources, tags, gaps, raw_tokens, response_tokens, started_from_ids: ${JSON.stringify(matchedIds)}")`;
+          // Partial match or stale full match — re-research
+          const staleNote = topFreshness === "stale"
+            ? " (results found but marked stale — treat as starting point, not answer)"
+            : "";
+          nextSteps = `\n\nPARTIAL MATCH${staleNote}. Do a web search to fill the gaps — do NOT use training data alone.\n\nAfter researching, did you find anything new beyond what was already here? If yes, save it:\nAgent(description: "Save to wellread", run_in_background: true,\nprompt: "Call the contribute tool. search_surface format: [TOPIC]: ... [COVERS]: ... [TECHNOLOGIES]: ... [RELATED]: ... [SOLVES]: ... Research data: <content, sources, tags, gaps, raw_tokens, response_tokens, volatility, started_from_ids: ${JSON.stringify(matchedIds)}>")`;
         }
 
         return {
           content: [
             {
               type: "text" as const,
-              text: `${updateNotice}Found ${results.length} prior research entries (match: ${matchType}, similarity: ${topSimilarity.toFixed(3)}):\n\n${formatted.join("\n\n")}${nextSteps}\n\nBADGE (paste EXACTLY at end of your response):\n${badge}`,
+              text: `${updateNotice}Found ${results.length} prior research entries (match: ${effectiveMatch}, freshness: ${topFreshness}, similarity: ${topSimilarity.toFixed(3)}):\n\n${formatted.join("\n\n")}${nextSteps}\n\nBADGE (paste EXACTLY at end of your response):\n${badge}`,
             },
           ],
         };
