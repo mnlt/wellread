@@ -11,14 +11,14 @@
 
 ### ❌ Without Wellread
 
-- ❌ Your agent researches the same implementation problems over and over
-- ❌ When it doesn't, it hallucinates generic answers and outdated examples
-- ❌ Thousands of devs asking the same question - same searches, same tokens burned
-- ❌ Mid-task rate limits. Everyone paying for the same answer.
+- ❌ Your agent researches every technical question from scratch
+- ❌ If it doesn't, it hallucinates - outdated APIs, wrong examples, broken code
+- ❌ Thousands of devs burning tokens on the same searches
+- ❌ Everyone paying for the same answers
 
 ### ✅ With Wellread
 
-- ✅ Your agent checks what thousands of devs already found - before touching the web
+- ✅ Your agent checks what other devs already found - before touching the web
 - ✅ Hit? Instant answer, grounded in real, verified sources
 - ✅ Miss? You research once. The entire network benefits.
 - ✅ Every search makes the next one better and cheaper.
