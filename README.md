@@ -20,7 +20,7 @@
 - ✅ Every search makes the next one better and cheaper.
 - ✨ Free. No rate limits.
 
-Wellread works in two modes:
+Wellread pays off immediately — two ways:
 
 ### 🎮 Singleplayer
 
@@ -35,7 +35,9 @@ Tap into what every dev in the network has researched — 81% compressed. Each a
 - Hit → instant answer, grounded in real sources.
 - Miss → your agent researches normally and saves it.
 
-The next person who asks gets a better answer than you did. And the person after them gets an even better one. That's the point — wellread doesn't just cache answers, it compounds them.
+Both combined:
+- Wellread compounds answers — each one better than the last
+- Get further, faster
 
 Both modes work automatically. No config. No switching.
 
