@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="https://raw.githubusercontent.com/mnlt/wellread/main/assets/header.png" alt="wellread" width="600" />
+  <img src="https://raw.githubusercontent.com/mnlt/wellread/main/assets/header.png" alt="wellread" width="400" />
 </p>
 
 # wellread - Another dev already searched that.
