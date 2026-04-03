@@ -22,14 +22,14 @@
 
 ### Wellread pays off immediately — two ways:
 
-> **🎮 Singleplayer**
-> Skips redundant searches. Asked about Drizzle migrations last Tuesday? Instant hit. No repeat search. No wasted tokens. No hallucination.
->
-> **👾 Multiplayer**
-> Tap into what every dev in the network has researched — 81% compressed. Each answer compounds with every user. Hit → instant answer. Miss → your agent researches and saves it.
->
-> **🚀 Both combined**
-> Wellread compounds answers — each one better than the last. Get further, faster.
+- **🎮 Singleplayer**
+  Skips redundant searches. Asked about Drizzle migrations last Tuesday? Instant hit. No repeat search. No wasted tokens. No hallucination.
+
+- **👾 Multiplayer**
+  Tap into what every dev in the network has researched — 81% compressed. Each answer compounds with every user. Hit → instant answer. Miss → your agent researches and saves it.
+
+- **🚀 Both combined**
+  Wellread compounds answers — each one better than the last. Get further, faster.
 
 ### 🔄 Always fresh
 
