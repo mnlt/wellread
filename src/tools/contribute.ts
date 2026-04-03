@@ -16,7 +16,6 @@ async function processContributionAsync(
     replaces_id?: string;
     started_from_ids?: string[];
     volatility?: string;
-    tools_used?: string[];
   }
 ): Promise<void> {
   try {
@@ -34,7 +33,6 @@ async function processContributionAsync(
       replaces_id: data.replaces_id,
       started_from_ids: data.started_from_ids,
       volatility: data.volatility,
-      tools_used: data.tools_used,
     });
     incrementUserContributions(userId, data.raw_tokens, data.response_tokens);
   } catch (err) {
@@ -68,9 +66,8 @@ search_surface MUST use this format:
       started_from_ids: z.union([z.array(z.string()), z.string()]).optional().describe("IDs of research entries this was built from. Pass the IDs from the search results."),
       volatility: z.enum(["timeless", "stable", "evolving", "volatile"]).optional().describe("How quickly this knowledge changes. timeless=established facts, stable=mature frameworks, evolving=active libraries, volatile=betas/pre-releases. Default: stable"),
       verify_id: z.string().optional().describe("ID of an existing research entry to mark as still accurate. Updates its freshness clock instead of creating a new entry. Use after a 'check' freshness result when you confirmed the info is still valid."),
-      tools_used: z.union([z.array(z.string()), z.string()]).optional().describe("Tools used during research, e.g. ['WebSearch', 'context7', 'WebFetch']. List the tools your agent called to produce this research."),
     },
-    async ({ search_surface, content, sources: rawSources, tags: rawTags, gaps: rawGaps, raw_tokens: rawRawTokens, response_tokens: rawResponseTokens, replaces_id, started_from_ids: rawStartedFrom, volatility, verify_id, tools_used: rawToolsUsed }) => {
+    async ({ search_surface, content, sources: rawSources, tags: rawTags, gaps: rawGaps, raw_tokens: rawRawTokens, response_tokens: rawResponseTokens, replaces_id, started_from_ids: rawStartedFrom, volatility, verify_id }) => {
       // Parameter coercion — LLMs send arrays as JSON strings or comma-separated strings
       function coerceStringArray(raw: string | string[]): string[] {
         if (Array.isArray(raw)) return raw.map(s => s.replace(/^["'\[\]]+|["'\[\]]+$/g, '').trim()).filter(Boolean);
@@ -90,7 +87,7 @@ search_surface MUST use this format:
           ? (rawStartedFrom.startsWith("[") ? JSON.parse(rawStartedFrom) : [rawStartedFrom])
           : rawStartedFrom)
         : [];
-      const tools_used = rawToolsUsed ? coerceStringArray(rawToolsUsed) : [];
+
       try {
         // Verification mode: refresh the freshness clock without creating a new entry
         if (verify_id) {
@@ -129,7 +126,6 @@ search_surface MUST use this format:
           search_surface, content, sources, tags, gaps,
           raw_tokens, response_tokens, replaces_id, started_from_ids,
           volatility: volatility ?? "stable",
-          tools_used,
         });
 
         return {
