@@ -2,13 +2,6 @@
 
 Thanks for your interest in wellread.
 
-## How to help
+Please open an issue first to discuss what you'd like to change. This helps us align on the approach before you invest time, and avoids surprises on both sides.
 
-- **Report bugs** — open an issue describing what happened and how to reproduce it.
-- **Suggest ideas** — open an issue. Describe the problem, not the solution.
-- **Improve docs** — typos, clarifications, examples. PRs welcome.
-
-## Before opening a PR
-
-Please open an issue first to discuss what you'd like to change.
-This avoids wasted effort on both sides.
+Bug reports, ideas, and doc improvements are all welcome.
