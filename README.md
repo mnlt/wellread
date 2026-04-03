@@ -18,6 +18,7 @@
 - ✅ Hit? Instant answer, grounded in real, verified sources
 - ✅ Miss? You research once. The entire network benefits.
 - ✅ Every search makes the next one better and cheaper.
+- ✨ Free. No rate limits.
 
 Wellread works in two modes:
 
@@ -42,7 +43,9 @@ Both modes work automatically. No config. No switching.
 
 Every entry knows how fast its topic moves. TCP doesn't change — stays cached for months. A beta API might change tomorrow — gets re-verified in days. When an agent spot-checks and confirms it still holds, the clock resets for the next person. Nothing sits stale. Nothing stays wrong.
 
-**Free. No rate limits.**
+### 🔒 What gets shared
+
+Generalized research summaries only. No raw code, no project details, no credentials. Nothing private ever leaves your machine.
 
 ## Quick start
 
@@ -154,10 +157,6 @@ Works with any MCP-compatible client. Best experience with Claude Code.
 - Rule added to `~/.config/opencode/rules/wellread.md`
 
 </details>
-
-## What gets shared
-
-Generalized research summaries only. No raw code, no project details, no credentials. Nothing private ever leaves your machine.
 
 ## Contributing
 
