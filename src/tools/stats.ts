@@ -66,32 +66,41 @@ export function registerStatsTool(server: McpServer, userId: string) {
           .limit(1)
           .single();
 
-        // Top 5 contributions by citations
-        const { data: topContribs } = await supabase
+        // All contributions (for total impact calc)
+        const { data: allContribs } = await supabase
           .from("research")
           .select("search_surface, match_count, raw_tokens, response_tokens")
           .eq("user_id", userId)
           .eq("is_current", true)
-          .order("match_count", { ascending: false })
-          .limit(5);
+          .order("match_count", { ascending: false });
+
+        // Total impact across all entries
+        const totalImpact = (allContribs ?? []).reduce((sum, r) => {
+          const saved = r.raw_tokens - r.response_tokens;
+          return sum + (saved > 0 ? saved * r.match_count : 0);
+        }, 0);
+
+        // Top 5 for table
+        const top5 = (allContribs ?? []).slice(0, 5);
 
         // Format top contributions table
-        const topContribRows = (topContribs ?? []).map((r) => {
+        const topContribRows = top5.map((r) => {
           const topic = (r.search_surface ?? "")
             .split("\n")[0]
             .replace(/^\[TOPIC\]:\s*/i, "")
             .toLowerCase();
-          const topicTrunc = topic.length > 40 ? topic.slice(0, 37) + "..." : topic.padEnd(40);
-          const saved = r.raw_tokens - r.response_tokens;
-          const savedStr = saved > 0 ? formatTokensCompact(saved).padEnd(6) : "-".padEnd(6);
-          const cited = r.match_count > 0
-            ? `${r.match_count} time${r.match_count !== 1 ? "s" : ""}`
-            : "not yet";
-          return `│ ${topicTrunc}  ${savedStr}  ${cited}`;
+          const topicTrunc = topic.length > 37 ? topic.slice(0, 34) + "..." : topic.padEnd(37);
+          const savedPerHit = r.raw_tokens - r.response_tokens;
+          const savedStr = savedPerHit > 0 ? formatTokensCompact(savedPerHit).padEnd(9) : "-".padEnd(9);
+          const hitsStr = String(r.match_count).padEnd(5);
+          const totalStr = savedPerHit > 0 && r.match_count > 0
+            ? formatTokensCompact(savedPerHit * r.match_count)
+            : "-";
+          return `│ ${topicTrunc}  ${savedStr} ${hitsStr} ${totalStr}`;
         });
 
         const topContribsBlock = topContribRows.length > 0
-          ? `│ Top contributions\n│\n│ ${"Topic".padEnd(40)}  ${"Saved".padEnd(6)}  Cited\n│ ${"─".repeat(58)}\n${topContribRows.join("\n")}`
+          ? `│ Top contributions\n│\n│ ${"Topic".padEnd(37)}  ${"Saved/hit".padEnd(9)} ${"Hits".padEnd(5)} Total\n│ ${"─".repeat(65)}\n${topContribRows.join("\n")}\n│\n│ Your contributions saved **${formatTokensCompact(totalImpact)}** tokens for others`
           : "│ Start contributing to build your profile";
 
         // Compute
