@@ -10,7 +10,7 @@
 - ❌ Your agent researches the same things over and over
 - ❌ When it doesn't, it hallucinates generic answers and outdated examples
 - ❌ And so does every other developer's agent — same searches, same sources, same tokens burned
-- ❌ All of you paying for the same answer
+- ❌ Everyone paying for the same answer
 
 ### ✅ With Wellread
 
