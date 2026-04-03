@@ -30,7 +30,7 @@ Skips redundant searches. Asked about Drizzle migrations last Tuesday? Instant h
 
 ### 👾 Multiplayer
 
-Your agent taps into what every developer in the wellread network has researched.
+Tap into what every dev in the network has researched — 81% compressed. Each answer compounds with every user.
 - Hit → instant answer, grounded in real sources.
 - Miss → your agent researches normally and saves it.
 
