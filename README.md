@@ -35,11 +35,9 @@ Tap into what every dev in the network has researched — 81% compressed. Each a
 - Hit → instant answer, grounded in real sources.
 - Miss → your agent researches normally and saves it.
 
-Both combined:
-- Wellread compounds answers — each one better than the last
-- Get further, faster
+### 🚀 Both combined
 
-Both modes work automatically. No config. No switching.
+Wellread compounds answers — each one better than the last. Get further, faster.
 
 ### 🔄 Always fresh
 
