@@ -9,15 +9,15 @@
 
 - ❌ Your agent researches the same things over and over
 - ❌ When it doesn't, it hallucinates generic answers and outdated examples
-- ❌ And so does every other developer's agent — same searches, same sources, same tokens burned
-- ❌ Everyone paying for the same answer
+- ❌ Thousands of devs asking the same question — same searches, same tokens burned
+- ❌ Mid-task rate limits. Everyone paying for the same answer.
 
 ### ✅ With Wellread
 
-- ✅ Your agent never researches the same thing twice
-- ✅ Every answer grounded in real, verified sources
-- ✅ Every search builds on what other developers already found
-- ✅ Research once, benefit everyone
+- ✅ Your agent checks what thousands of devs already found — before touching the web
+- ✅ Hit? Instant answer, grounded in real, verified sources
+- ✅ Miss? You research once. The entire network benefits.
+- ✅ Every search makes the next one better and cheaper.
 
 Wellread works in two modes:
 
