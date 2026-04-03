@@ -23,7 +23,7 @@ Wellread works in two modes:
 
 ### 🎮 Singleplayer
 
-Your agent remembers what it already researched. Asked about Drizzle migrations last Tuesday? Cached.
+Skips redundant searches. Asked about Drizzle migrations last Tuesday? Instant hit.
 - No repeat search.
 - No wasted tokens.
 - No hallucination.
