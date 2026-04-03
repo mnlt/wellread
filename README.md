@@ -7,7 +7,7 @@
 
 ### ❌ Without Wellread
 
-- ❌ Your agent researches the same things over and over
+- ❌ Your agent researches the same implementation problems over and over
 - ❌ When it doesn't, it hallucinates generic answers and outdated examples
 - ❌ Thousands of devs asking the same question — same searches, same tokens burned
 - ❌ Mid-task rate limits. Everyone paying for the same answer.
