@@ -1,4 +1,8 @@
-# wellread
+<p align="center">
+  <img src="assets/header.png" alt="wellread" width="600" />
+</p>
+
+# wellread - Another dev already searched that.
 
 [![npm version](https://img.shields.io/npm/v/wellread)](https://www.npmjs.com/package/wellread)
 [![License: AGPL-3.0](https://img.shields.io/badge/license-AGPL--3.0-blue)](LICENSE)
