@@ -3,34 +3,34 @@ import { supabase, getNetworkStats } from "../db.js";
 import { waterSaved } from "../utils.js";
 
 interface UserStats {
-  // User info
   name: string | null;
   created_at: string;
-  // Search stats
   search_count: number;
   no_match_count: number;
   partial_match_count: number;
   full_match_count: number;
-  // Token economics
   tokens_kept: number;
   tokens_donated: number;
   tokens_distilled: number;
-  // Social
   citations_count: number;
   contribution_count: number;
 }
 
 function computeKarma(stats: UserStats): number {
-  // Karma = saving value + contribution value + social value
-  // Weights chosen so early users see meaningful numbers
-  const searchKarma = Math.round(stats.tokens_kept / 100); // 1 karma per 100 tokens saved
-  const contributeKarma = stats.contribution_count * 50; // 50 karma per contribution
-  const citationKarma = stats.citations_count * 10; // 10 karma per citation
+  const searchKarma = Math.round(stats.tokens_kept / 100);
+  const contributeKarma = stats.contribution_count * 50;
+  const citationKarma = stats.citations_count * 10;
   return searchKarma + contributeKarma + citationKarma;
 }
 
 function daysAgo(dateStr: string): number {
   return Math.max(1, Math.floor((Date.now() - new Date(dateStr).getTime()) / (1000 * 60 * 60 * 24)));
+}
+
+function formatTokensCompact(tokens: number): string {
+  if (tokens >= 1_000_000) return `${(tokens / 1_000_000).toFixed(1)}M`;
+  if (tokens >= 1000) return `${(tokens / 1000).toFixed(1)}K`;
+  return String(tokens);
 }
 
 export function registerStatsTool(server: McpServer, userId: string) {
@@ -53,70 +53,44 @@ export function registerStatsTool(server: McpServer, userId: string) {
 
         const stats = user as UserStats;
 
-        // Top tags (from user's research entries)
-        const { data: tagData } = await supabase
-          .from("research")
-          .select("tags")
-          .eq("user_id", userId)
-          .eq("is_current", true);
-
-        const tagCounts: Record<string, number> = {};
-        for (const row of tagData ?? []) {
-          for (const tag of row.tags ?? []) {
-            tagCounts[tag] = (tagCounts[tag] || 0) + 1;
-          }
-        }
-        const topTags = Object.entries(tagCounts)
-          .sort((a, b) => b[1] - a[1])
-          .slice(0, 6);
-
         // Network stats
         const network = await getNetworkStats();
 
-        // Compute
-        const karma = computeKarma(stats);
-        const days = daysAgo(stats.created_at);
-        const hitCount = stats.full_match_count + stats.partial_match_count;
-        const hitRate = stats.search_count > 0 ? Math.round(hitCount / stats.search_count * 100) : 0;
-        const networkContribPct = network.total_contributions > 0
-          ? Math.round(stats.contribution_count / network.total_contributions * 100)
-          : 0;
-
-        const displayName = stats.name || "Anonymous";
-        const tagsLine = topTags.length > 0
-          ? topTags.map(([tag, count]) => `${tag} (${count})`).join(" · ")
-          : "none yet";
-
-        // Top cited research entries
-        const { data: topCited } = await supabase
+        // Latest 5 research entries
+        const { data: latestResearch } = await supabase
           .from("research")
-          .select("search_surface, match_count")
+          .select("search_surface, match_count, raw_tokens, response_tokens")
           .eq("user_id", userId)
           .eq("is_current", true)
-          .gt("match_count", 0)
-          .order("match_count", { ascending: false })
-          .limit(3);
+          .order("created_at", { ascending: false })
+          .limit(5);
 
-        const topCitedLines = (topCited ?? []).map((r) => {
+        const latestLines = (latestResearch ?? []).map((r, i) => {
           const topic = (r.search_surface ?? "")
             .split("\n")[0]
             .replace(/^\[TOPIC\]:\s*/i, "")
             .toLowerCase()
             .slice(0, 45);
-          return `│ "${topic}" → cited **${r.match_count}** times`;
+          const saved = r.raw_tokens - r.response_tokens;
+          const citedPart = r.match_count > 0
+            ? `cited ${r.match_count} time${r.match_count !== 1 ? "s" : ""}`
+            : "not cited yet";
+          const savePart = saved > 0
+            ? `saved ${formatTokensCompact(saved)} tokens`
+            : "your contribution";
+          return `│ ${i + 1}. ${topic}    ${savePart} · ${citedPart}`;
         });
 
-        // Bar chart helper
-        const BAR_WIDTH = 16;
-        const maxTagCount = topTags.length > 0 ? topTags[0][1] : 1;
-        const tagBars = topTags.slice(0, 5).map(([tag, count]) => {
-          const filled = Math.round((count / maxTagCount) * BAR_WIDTH);
-          const empty = BAR_WIDTH - filled;
-          const label = tag.length > 12 ? tag.slice(0, 12) : tag.padEnd(12);
-          return `│ ${label}  ${"█".repeat(filled)}${"░".repeat(empty)}  ${count} entries`;
-        });
+        // Compute
+        const karma = computeKarma(stats);
+        const days = daysAgo(stats.created_at);
+        const hitCount = stats.full_match_count + stats.partial_match_count;
+        const networkContribPct = network.total_contributions > 0
+          ? Math.round(stats.contribution_count / network.total_contributions * 100)
+          : 0;
 
-        // Tokens display (M or K)
+        const displayName = stats.name || "Anonymous";
+
         const tokensSavedDisplay = stats.tokens_kept >= 1_000_000
           ? `${(stats.tokens_kept / 1_000_000).toFixed(1)}M`
           : `${Math.round(stats.tokens_kept / 1000)}K`;
@@ -127,16 +101,15 @@ export function registerStatsTool(server: McpServer, userId: string) {
   ${displayName} · **${karma.toLocaleString()}** karma · ${days} day${days !== 1 ? "s" : ""} in
 
 ⚡ **YOU SAVED**
-│ **${hitCount}** search${hitCount !== 1 ? "es" : ""} you didn't have to do${stats.search_count > 0 ? ` · **${hitRate}%** hit rate` : ""}
+│ **${hitCount}** search${hitCount !== 1 ? "es" : ""} you didn't have to do
 │ **${tokensSavedDisplay}** tokens saved
 │ **${waterSaved(stats.tokens_kept)}** kept in the river 💧
 
-🚀 **YOU GAVE BACK**
+🚀 **YOUR CONTRIBUTION**
 │ **${stats.contribution_count}** research entr${stats.contribution_count !== 1 ? "ies" : "y"} published
 │ Helped others **${stats.citations_count}** time${stats.citations_count !== 1 ? "s" : ""}
 │
-${tagBars.length > 0 ? `│ You write about\n${tagBars.join("\n")}\n│` : "│"}
-${topCitedLines.length > 0 ? `│ Others found most useful\n${topCitedLines.join("\n")}` : "│ Start contributing to build your profile"}
+${latestLines.length > 0 ? `│ Latest\n${latestLines.join("\n")}` : "│ Start contributing to build your profile"}
 
 🌍 **THE NETWORK**
 │ **${network.total_contributions}** entries
