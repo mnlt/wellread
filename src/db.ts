@@ -189,6 +189,7 @@ export interface SearchLog {
   tokens_saved: number;
   agent?: string;
   session_id?: string;
+  hook_version?: number;
 }
 
 export async function logSearch(entry: SearchLog): Promise<void> {
@@ -202,6 +203,7 @@ export async function logSearch(entry: SearchLog): Promise<void> {
     tokens_saved: entry.tokens_saved,
     agent: entry.agent ?? null,
     session_id: entry.session_id ?? null,
+    hook_version: entry.hook_version ?? null,
   });
 
   if (error) {

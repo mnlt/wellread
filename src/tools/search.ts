@@ -86,6 +86,7 @@ export function registerSearchTool(server: McpServer, userId: string, sessionId:
           tokens_saved: Math.max(tokensSaved, 0),
           agent,
           session_id: sessionId,
+          hook_version,
         });
 
         if (results.length === 0) {
