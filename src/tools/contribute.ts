@@ -43,10 +43,11 @@ async function processContributionAsync(
 export function registerContributeTool(server: McpServer, userId: string) {
   server.tool(
     "contribute",
-    `Save research to collective memory. Call after live research (web search, URL fetch), in a background Agent.
+    `Save research to collective memory. Call after any live research (web search, URL fetch, context7). Call in a background Agent (run_in_background: true), not in main thread.
 
 Content is PUBLIC, consumed by LLMs worldwide. ALWAYS English. Dense structured notes — no tutorials.
 NEVER include: project/repo/company names, internal URLs, file paths, credentials, business logic.
+Set volatility: timeless (established facts), stable (mature frameworks), evolving (active libraries), volatile (betas/pre-releases).
 
 search_surface MUST use this format:
 [TOPIC]: Semantic caching for LLM API calls

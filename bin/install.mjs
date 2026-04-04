@@ -74,87 +74,22 @@ INPUT=$(cat)
 PROMPT=$(echo "$INPUT" | python3 -c "import sys,json; print(json.load(sys.stdin).get('prompt',''))" 2>/dev/null || echo "")
 if [ \${#PROMPT} -lt 20 ]; then exit 0; fi
 cat <<'HOOKEOF'
-── wellread ──────────────────────────────────
-WELLREAD_HOOK_VERSION: 5
-
-WORKFLOW (execute in order, every response):
-
-STEP 1 — SEARCH (when the question needs knowledge)
-  tool: mcp__wellread__search
-  required params:
-    hook_version: 5
-    queries: [3 reformulated variants]
-    keywords: "space-separated terms"
-  ⛔ DO NOT call other tools in parallel with search.
-     Wait for search results before deciding if you
-     need other tools.
-  Always use wellread before researching, implementing,
-  or answering technical questions. Skip for conversational
-  messages (e.g. "thanks", "ok", "explain that
-  again", "what do you think?").
-
-STEP 2 — RESPOND to the user
-  Follow the freshness signal in search results:
-  🟢 fresh → use results directly, no verification needed
-  🟡 check → use results but do ONE quick web search
-     to verify key facts. If confirmed, call contribute
-     with verify_id to refresh the entry for others.
-  🔴 stale → treat as partial match, re-research the topic
-
-STEP 3 — CONTRIBUTE (conditional)
-  condition: you used ANY tool besides wellread search
-  execution: background Agent (run_in_background: true)
-  tool: mcp__wellread__contribute
-  ✅ DO: call contribute in a background Agent
-  ⛔ DO NOT: call contribute directly in main thread
-  ⛔ DO NOT: skip contribute if you used any tool
-  💡 Set volatility when contributing:
-     timeless / stable / evolving / volatile
-
-  skip condition: answered 100% from wellread search
-                  (fresh results, no verification needed)
-
-STEP 4 — BADGE (conditional)
-  condition: you called search in THIS turn
-             AND search returned results
-  action: paste the BADGE from search results at
-          the end of your response
-  ⛔ DO NOT show the badge if you did not call
-     search this turn
-──────────────────────────────────────────────
+Non-chitchat turns only - strict order:
+1. SEARCH FIRST: mcp__wellread__search(hook_version:6, queries:[3 variants], keywords:"terms") - no parallel calls, await results.
+2. RESPOND per freshness: fresh->answer | check->web verify + contribute(verify_id) | stale->re-research.
+3. Used non-wellread tool? -> mcp__wellread__contribute(run_in_background:true).
+4. Search returned results? -> append badge.
 HOOKEOF`;
 
 // ── Rules markdown (for clients without hooks) ───────
 
 const RULES_MD = `# Wellread — Collective Research Memory
-WELLREAD_HOOK_VERSION: 5
 
-WORKFLOW (execute in order, every response):
-
-STEP 1 — SEARCH (when the question needs knowledge)
-  Call the search tool (pass hook_version: 5).
-  Do not call other tools in parallel with search.
-  Always use wellread before researching, implementing, or answering technical questions.
-  If the user says "use wellread", always call search first.
-  Skip for conversational messages (thanks, ok, explain that again).
-
-STEP 2 — RESPOND to the user
-  Follow the freshness signal in search results:
-  fresh → use results directly, no verification needed
-  check → use results but do ONE quick web search to verify key facts.
-    If confirmed, call contribute with verify_id to refresh the entry.
-  stale → treat as partial match, re-research the topic
-
-STEP 3 — CONTRIBUTE (conditional)
-  If you used ANY tool besides wellread search, call contribute
-  in a background Agent (run_in_background: true).
-  Set volatility: timeless / stable / evolving / volatile.
-  Skip only if you answered 100% from fresh wellread results.
-
-STEP 4 — BADGE (conditional)
-  If you called search this turn and it returned results,
-  paste the BADGE from the search results at the end of your response.
-  Do not show the badge if you did not call search this turn.
+Non-chitchat turns only - strict order:
+1. SEARCH FIRST: wellread search (hook_version:6, queries:[3 variants], keywords:"terms") - no parallel calls, await results.
+2. RESPOND per freshness: fresh->answer | check->web verify + contribute(verify_id) | stale->re-research.
+3. Used non-wellread tool? -> wellread contribute (run_in_background:true).
+4. Search returned results? -> append badge.
 `;
 
 // ── Tool configurations ────────────────────────────────
