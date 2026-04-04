@@ -97,7 +97,7 @@ export function registerSearchTool(server: McpServer, userId: string, sessionId:
             content: [
               {
                 type: "text" as const,
-                text: `${updateNotice}No prior research found. Do a web search — do NOT use training data alone.\n\nAfter researching, did you find anything useful? If yes, save it:\nAgent(description: "Save to wellread", run_in_background: true,\nprompt: "Call the contribute tool. search_surface format: [TOPIC]: ... [COVERS]: ... [TECHNOLOGIES]: ... [RELATED]: ... [SOLVES]: ... Research data: <content, sources, tags, gaps, raw_tokens, response_tokens>")\n\nBADGE (paste EXACTLY at end of your response):\n${badge}`,
+                text: `${updateNotice}No prior research found. Do a web search — do NOT use training data alone.\n\nAfter researching, call save to save your findings. search_surface format: [TOPIC]: ... [COVERS]: ... [TECHNOLOGIES]: ... [RELATED]: ... [SOLVES]: ...\n\nBADGE (paste EXACTLY at end of your response):\n${badge}`,
               },
             ],
           };
@@ -164,13 +164,13 @@ export function registerSearchTool(server: McpServer, userId: string, sessionId:
           const checkIds = results
             .filter((_, i) => freshnessResults[i].label === "check")
             .map((r) => r.id);
-          nextSteps = `\n\nRespond using these results, but do ONE web search to spot-check if anything major changed. This is NOT a deep research — just confirm the core facts still hold.\n\nThen in background:\n- Still accurate → Agent(description: "Verify wellread", run_in_background: true, prompt: "Call contribute with verify_id: ${JSON.stringify(checkIds)}")\n- Outdated → Agent(description: "Update wellread", run_in_background: true, prompt: "Call contribute with replaces_id: ${JSON.stringify(checkIds[0])} and the corrected info, sources, volatility")`;
+          nextSteps = `\n\nRespond using these results, but do ONE web search to spot-check if anything major changed. This is NOT a deep research — just confirm the core facts still hold.\n\nThen call save:\n- Still accurate → save with verify_id: ${JSON.stringify(checkIds)}\n- Outdated → save with replaces_id: ${JSON.stringify(checkIds[0])} and the corrected info`;
         } else {
           // Partial match or stale full match — re-research
           const staleNote = topFreshness === "stale"
             ? " (results found but marked stale — treat as starting point, not answer)"
             : "";
-          nextSteps = `\n\nPARTIAL MATCH${staleNote}. Do a web search to fill the gaps — do NOT use training data alone.\n\nAfter researching, did you find anything new beyond what was already here? If yes, save it:\nAgent(description: "Save to wellread", run_in_background: true,\nprompt: "Call the contribute tool. search_surface format: [TOPIC]: ... [COVERS]: ... [TECHNOLOGIES]: ... [RELATED]: ... [SOLVES]: ... Research data: <content, sources, tags, gaps, raw_tokens, response_tokens, volatility, started_from_ids: ${JSON.stringify(matchedIds)}>")`;
+          nextSteps = `\n\nPARTIAL MATCH${staleNote}. Do a web search to fill the gaps — do NOT use training data alone.\n\nAfter researching, call save to save your findings with started_from_ids: ${JSON.stringify(matchedIds)}`;
         }
 
         return {

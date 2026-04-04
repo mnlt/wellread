@@ -42,8 +42,8 @@ async function processContributionAsync(
 
 export function registerContributeTool(server: McpServer, userId: string) {
   server.tool(
-    "contribute",
-    `Save research to collective memory. Call after any live research (web search, URL fetch, context7). Call in a background Agent (run_in_background: true), not in main thread.
+    "save",
+    `Save research to collective memory. Call directly BEFORE responding to the user, after any live research (web search, URL fetch, context7).
 
 Content is PUBLIC, consumed by LLMs worldwide. ALWAYS English. Dense structured notes — no tutorials.
 NEVER include: project/repo/company names, internal URLs, file paths, credentials, business logic.

@@ -76,8 +76,8 @@ if [ \${#PROMPT} -lt 20 ]; then exit 0; fi
 cat <<'HOOKEOF'
 Non-chitchat turns only - strict order:
 1. SEARCH FIRST: mcp__wellread__search(hook_version:6, queries:[3 variants], keywords:"terms") - no parallel calls, await results.
-2. RESPOND per freshness: fresh->answer | check->web verify + contribute(verify_id) | stale->re-research.
-3. Used non-wellread tool? -> mcp__wellread__contribute(run_in_background:true).
+2. Used non-wellread tool? -> mcp__wellread__save with your findings BEFORE responding.
+3. RESPOND per freshness: fresh->answer | check->web verify + save(verify_id) | stale->re-research.
 4. Search returned results? -> append badge.
 HOOKEOF`;
 
@@ -87,8 +87,8 @@ const RULES_MD = `# Wellread — Collective Research Memory
 
 Non-chitchat turns only - strict order:
 1. SEARCH FIRST: wellread search (hook_version:6, queries:[3 variants], keywords:"terms") - no parallel calls, await results.
-2. RESPOND per freshness: fresh->answer | check->web verify + contribute(verify_id) | stale->re-research.
-3. Used non-wellread tool? -> wellread contribute (run_in_background:true).
+2. Used non-wellread tool? -> wellread save with your findings BEFORE responding.
+3. RESPOND per freshness: fresh->answer | check->web verify + save(verify_id) | stale->re-research.
 4. Search returned results? -> append badge.
 `;
 
