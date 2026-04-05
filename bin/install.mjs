@@ -74,9 +74,9 @@ INPUT=$(cat)
 PROMPT=$(echo "$INPUT" | python3 -c "import sys,json; print(json.load(sys.stdin).get('prompt',''))" 2>/dev/null || echo "")
 if [ \${#PROMPT} -lt 20 ]; then exit 0; fi
 cat <<'HOOKEOF'
-Non-chitchat turns only - strict order:
+Always, except chitchat or when the answer is entirely within provided code/files:
 1. SEARCH FIRST: mcp__wellread__search(hook_version:6, queries:[3 variants], keywords:"terms") - no parallel calls, await results.
-2. Used non-wellread tool? -> mcp__wellread__save with your findings BEFORE responding.
+2. Used non-wellread tool? -> mcp__wellread__save BEFORE responding.
 3. RESPOND per freshness: fresh->answer | check->web verify + save(verify_id) | stale->re-research.
 4. Search returned results? -> append badge.
 HOOKEOF`;
@@ -85,9 +85,9 @@ HOOKEOF`;
 
 const RULES_MD = `# Wellread — Collective Research Memory
 
-Non-chitchat turns only - strict order:
+Always, except chitchat or when the answer is entirely within provided code/files:
 1. SEARCH FIRST: wellread search (hook_version:6, queries:[3 variants], keywords:"terms") - no parallel calls, await results.
-2. Used non-wellread tool? -> wellread save with your findings BEFORE responding.
+2. Used non-wellread tool? -> wellread save BEFORE responding.
 3. RESPOND per freshness: fresh->answer | check->web verify + save(verify_id) | stale->re-research.
 4. Search returned results? -> append badge.
 `;
