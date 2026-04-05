@@ -5,7 +5,7 @@ import { hybridSearch, logSearch, incrementUserSearch, supabase } from "../db.js
 import { formatTokens, randomPick } from "../utils.js";
 import { computeFreshness, type FreshnessLabel, type Volatility } from "../freshness.js";
 
-const CURRENT_HOOK_VERSION = 6;
+const CURRENT_HOOK_VERSION = 7;
 
 const FRESHNESS_ICON: Record<FreshnessLabel, string> = {
   fresh: "\u{1F7E2}",
