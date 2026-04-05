@@ -1,6 +1,6 @@
 {
   "name": "wellread",
-  "version": "0.1.29",
+  "version": "0.1.30",
   "description": "Collective research memory for AI agents. Search before you research, contribute when you're done.",
   "type": "module",
   "main": "src/server.ts",
