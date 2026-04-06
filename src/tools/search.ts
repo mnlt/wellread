@@ -32,7 +32,7 @@ const NO_MATCH_QUIPS = [
   "Fresh knowledge. Still warm.",
   "You broke new ground. The ground says thanks.",
   "The hive mind just learned something new.",
-  "Congrats. You taught the network.",
+  "The network just got smarter.",
   "First hit. No cache. All you.",
   "This one's going in the vault.",
   "That was virgin territory. Was.",
