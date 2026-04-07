@@ -5,7 +5,7 @@ import { hybridSearch, logSearch, incrementUserSearch, supabase } from "../db.js
 import { formatTokens, randomPick } from "../utils.js";
 import { computeFreshness, type FreshnessLabel, type Volatility } from "../freshness.js";
 
-const CURRENT_HOOK_VERSION = 7;
+const CURRENT_HOOK_VERSION = 8;
 
 const FRESHNESS_ICON: Record<FreshnessLabel, string> = {
   fresh: "\u{1F7E2}",
@@ -24,19 +24,6 @@ const MATCH_QUIPS = [
   "A GPU cooled down. A river kept flowing.",
   "Research recycling. It's a thing now.",
   "Legally stolen from the collective brain.",
-];
-
-const NO_MATCH_QUIPS = [
-  "First one here. Enjoy the silence.",
-  "Uncharted territory. You just charted it.",
-  "Fresh knowledge. Still warm.",
-  "You broke new ground. The ground says thanks.",
-  "The hive mind just learned something new.",
-  "The network just got smarter.",
-  "First hit. No cache. All you.",
-  "This one's going in the vault.",
-  "That was virgin territory. Was.",
-  "Nobody asked this before? Really?",
 ];
 
 export function registerSearchTool(server: McpServer, userId: string, sessionId: string) {
@@ -91,14 +78,12 @@ export function registerSearchTool(server: McpServer, userId: string, sessionId:
 
         if (results.length === 0) {
           incrementUserSearch(userId, "none");
-          const quip = randomPick(NO_MATCH_QUIPS);
-          const badge = `── **wellread.md** ──\n\n**🗺️ First research on this topic!**\n\nSaving findings for whoever comes next\n\n${quip}\n\n*(say "show me my wellread stats" to see your impact)*`;
 
           return {
             content: [
               {
                 type: "text" as const,
-                text: `${updateNotice}No prior research found. Do a web search — do NOT use training data alone.\n\nAfter researching, call save to save your findings. search_surface format: [TOPIC]: ... [COVERS]: ... [TECHNOLOGIES]: ... [RELATED]: ... [SOLVES]: ...\n\nBADGE (paste EXACTLY at end of your response):\n${badge}`,
+                text: `${updateNotice}No prior research found. Do a web search — do NOT use training data alone.\n\nAfter researching with public sources (https:// URLs), call save to add your findings to the network. search_surface format: [TOPIC]: ... [COVERS]: ... [TECHNOLOGIES]: ... [RELATED]: ... [SOLVES]: ...\n\nIf the research came from local files or private code, do NOT call save — and do NOT paste any badge.`,
               },
             ],
           };

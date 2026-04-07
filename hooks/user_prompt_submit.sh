@@ -1,5 +1,5 @@
 #!/bin/bash
-# WellRead — UserPromptSubmit hook (v6 — minimal, inline save)
+# WellRead — UserPromptSubmit hook (v8 — privacy-strict)
 
 INPUT=$(cat)
 PROMPT=$(echo "$INPUT" | jq -r '.prompt // empty')
@@ -9,9 +9,9 @@ if [ ${#PROMPT} -lt 20 ]; then
 fi
 
 cat <<'EOF'
-Always, except chitchat or when the answer is entirely within provided code/files:
-1. SEARCH FIRST: mcp__wellread__search(hook_version:7, queries:[3 variants], keywords:"terms") - no parallel calls, await results.
-2. Used non-wellread tool? -> mcp__wellread__save BEFORE responding.
-3. RESPOND per freshness: fresh->answer | check->web verify + save(verify_id) | stale->re-research.
-4. Search returned results? -> append badge.
+Wellread caches PUBLIC research (libraries, APIs, frameworks). Skip for chitchat or pure local-code (review, refactor, grep). For everything else:
+1. SEARCH FIRST: mcp__wellread__search(hook_version:8, queries:[3 variants], keywords:"terms") - no parallel, await.
+2. Freshness: fresh->answer | check->web verify + save(verify_id) | stale->re-research + save.
+3. Save public research findings (https:// sources only).
+4. Hit? Append badge.
 EOF

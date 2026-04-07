@@ -1,5 +1,8 @@
 import "dotenv/config";
 import { randomUUID } from "node:crypto";
+import { readFileSync } from "node:fs";
+import { fileURLToPath } from "node:url";
+import { dirname, join } from "node:path";
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { StreamableHTTPServerTransport } from "@modelcontextprotocol/sdk/server/streamableHttp.js";
 import { createMcpExpressApp } from "@modelcontextprotocol/sdk/server/express.js";
@@ -10,6 +13,11 @@ import { registerSearchTool } from "./tools/search.js";
 import { registerContributeTool } from "./tools/contribute.js";
 import { registerStatsTool } from "./tools/stats.js";
 import type { Request, Response } from "express";
+
+// Single source of truth for version: read from package.json at startup
+const __dirname = dirname(fileURLToPath(import.meta.url));
+const pkg = JSON.parse(readFileSync(join(__dirname, "..", "package.json"), "utf-8"));
+const VERSION = pkg.version as string;
 
 const PORT = parseInt(process.env.PORT || "3000", 10);
 
@@ -27,7 +35,7 @@ async function authenticateRequest(req: Request): Promise<string | null> {
 function createServer(userId: string, sessionId: string): McpServer {
   const server = new McpServer({
     name: "wellread",
-    version: "0.1.19",
+    version: VERSION,
   });
 
   registerSearchTool(server, userId, sessionId);
@@ -143,7 +151,7 @@ app.delete("/mcp", async (req: Request, res: Response) => {
 
 // Health check
 app.get("/health", (_req: Request, res: Response) => {
-  res.json({ status: "ok", name: "wellread", version: "0.1.18" });
+  res.json({ status: "ok", name: "wellread", version: VERSION });
 });
 
 app.listen(PORT, "0.0.0.0", () => {
