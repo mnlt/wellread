@@ -1,7 +1,7 @@
 import { z } from "zod";
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { generateEmbedding } from "../embeddings.js";
-import { insertResearch, incrementUserContributions, verifyResearch, supabase } from "../db.js";
+import { insertResearch, incrementUserContributions, verifyResearch, supabase, getSavedInWindow } from "../db.js";
 import { buildSaveBadge, buildBuiltOnBadge, parseClientStats } from "../badges.js";
 
 async function processContributionAsync(
@@ -179,17 +179,26 @@ search_surface MUST use this format:
           // If the lookup fails, fall back to 1 — the badge still works
         }
 
+        // Query how much wellread saved this user in the current 5h window.
+        // Combined with clientStats.fiveHourPct (from statusLine capture, may
+        // be absent), this lets the badge show the counterfactual line
+        // "you'd be at X% instead of Y%". When fiveHourPct is missing, the
+        // line is silently skipped. windowStartMs from the local helper gives
+        // exact window alignment; absent means fallback to NOW() - 5h.
+        const savedInWindow = await getSavedInWindow(userId, clientStats?.windowStartMs);
+
         // Pick the right badge: built-on (came from a partial hit) vs new contribution
         const isBuiltOn = started_from_ids.length > 0;
         const badge = isBuiltOn
-          ? buildBuiltOnBadge(clientStats)
+          ? buildBuiltOnBadge(clientStats, savedInWindow)
           : buildSaveBadge(
               {
                 sourcesCount: sources.length,
                 responseTokens: response_tokens,
                 contributionNumber,
               },
-              clientStats
+              clientStats,
+              savedInWindow
             );
 
         return {

@@ -7,13 +7,20 @@ import { formatTokens } from "./utils.js";
 // ─────────────────────────────────────────────────────────────────
 
 export interface ClientStats {
-  windowStart?: string;   // "09:00" — local time when the current 5h window started
-  windowEnd?: string;     // "14:00"
-  turns?: number;         // assistant messages in current window (account-wide)
-  billable?: number;      // input + cache_creation + output in current window
-  cacheRead?: number;     // cache_read tokens in current window
-  minutesLeft?: number;   // minutes until window resets
-  contextSize?: number;   // current conversation's input tokens (this workspace)
+  windowStart?: string;     // "09:00" — local time when the current 5h window started
+  windowEnd?: string;       // "14:00"
+  windowStartMs?: number;   // epoch ms — exact window start, used by db queries
+  turns?: number;           // assistant messages in current window (account-wide)
+  billable?: number;        // input + cache_creation + output in current window
+  minutesLeft?: number;     // minutes until window resets
+  contextSize?: number;     // current conversation's input tokens (this workspace)
+  // Optional: Anthropic's authoritative rate-limit percentages, captured by
+  // the statusLine helper from API response headers. Only present when the
+  // user has configured the wellread statusLine command and the helper has
+  // had a chance to fire (it runs every TUI redraw). If absent, the badge
+  // falls back to its existing display without the counterfactual line.
+  fiveHourPct?: number;     // 0-100, "Current session" as shown in /usage
+  sevenDayPct?: number;     // 0-100, "Current week (all models)" as shown in /usage
 }
 
 // Accepts the param as either string (JSON) or object, returns clean ClientStats or undefined
@@ -33,11 +40,13 @@ export function parseClientStats(raw: unknown): ClientStats | undefined {
   const out: ClientStats = {};
   if (typeof obj.windowStart === "string") out.windowStart = obj.windowStart;
   if (typeof obj.windowEnd === "string") out.windowEnd = obj.windowEnd;
+  if (typeof obj.windowStartMs === "number" && Number.isFinite(obj.windowStartMs)) out.windowStartMs = obj.windowStartMs;
   if (typeof obj.turns === "number") out.turns = obj.turns;
   if (typeof obj.billable === "number") out.billable = obj.billable;
-  if (typeof obj.cacheRead === "number") out.cacheRead = obj.cacheRead;
   if (typeof obj.minutesLeft === "number") out.minutesLeft = obj.minutesLeft;
   if (typeof obj.contextSize === "number") out.contextSize = obj.contextSize;
+  if (typeof obj.fiveHourPct === "number") out.fiveHourPct = obj.fiveHourPct;
+  if (typeof obj.sevenDayPct === "number") out.sevenDayPct = obj.sevenDayPct;
   return out;
 }
 
@@ -60,12 +69,13 @@ function formatTimeLeft(minutes: number): string {
   return `${h}h ${m}min`;
 }
 
-function buildWindowBlock(stats?: ClientStats): string {
+function buildWindowBlock(stats?: ClientStats, savedInWindow?: number): string {
   if (!stats || !stats.windowStart || !stats.windowEnd) return "";
   const turns = safeInt(stats.turns ?? 0);
   const billable = safeInt(stats.billable ?? 0);
   const minutesLeft = safeInt(stats.minutesLeft ?? 0);
-  return `\n\n   Your 5h window: ${stats.windowStart}–${stats.windowEnd}\n   ${turns} turns · ${formatTokens(billable)} billable · ${formatTimeLeft(minutesLeft)} until reset`;
+  const base = `\n\n   Your 5h window: ${stats.windowStart}–${stats.windowEnd}\n   ${turns} turns · ${formatTokens(billable)} billable · ${formatTimeLeft(minutesLeft)} until reset`;
+  return base + buildCounterfactualLine(stats, savedInWindow);
 }
 
 function buildHeader(): string {
@@ -80,6 +90,54 @@ export interface HitBadgeData {
   totalRawTokens: number;
   totalResponseTokens: number;
   resultsCount: number;
+  // Optional: total tokens wellread has saved for this user in the current 5h
+  // window (sum of `tokens_saved` over all matched searches in the last 5h).
+  // Combined with stats.fiveHourPct and stats.billable, this lets us compute
+  // and display the counterfactual: "you'd be at X% instead of Y% without us".
+  // Only available when the caller (search.ts) queried it before building.
+  savedInWindow?: number;
+}
+
+// Compute the counterfactual delta line if and only if we have all four pieces:
+//   - the user's current 5h utilization % (from Anthropic via statusLine)
+//   - the user's actual billable in the window (from the local helper)
+//   - tokens saved by wellread in this same window (from db query)
+//   - the saved amount is meaningful (≥5% of effort AND ≥50K absolute)
+//
+// The math:
+//   counterfactualPct = currentPct × (billable + saved) / billable
+//
+// This is the ONE thing wellread can show that nobody else can: by how much
+// has the cache pushed back the user's wall in this exact window. /usage
+// shows where you ARE; this shows what wellread BOUGHT YOU.
+function buildCounterfactualLine(stats: ClientStats | undefined, savedInWindow: number | undefined): string {
+  if (!stats || typeof stats.fiveHourPct !== "number" || typeof stats.billable !== "number") return "";
+  if (typeof savedInWindow !== "number" || savedInWindow <= 0) return "";
+  if (stats.billable <= 0) return "";
+
+  // Threshold: don't render noise. Need both meaningful absolute (≥50K saved)
+  // and meaningful relative (≥5% of total effort) for the line to be honest.
+  const effortRatio = savedInWindow / (stats.billable + savedInWindow);
+  if (savedInWindow < 50_000 || effortRatio < 0.05) return "";
+
+  const currentPct = stats.fiveHourPct;
+  const counterfactualPct = currentPct * (stats.billable + savedInWindow) / stats.billable;
+
+  // Format: integer % when both are ≥10, one decimal otherwise.
+  const fmt = (n: number) => (n >= 10 ? Math.round(n).toString() : n.toFixed(1));
+
+  // If the counterfactual exceeds 100%, the user would have ALREADY hit the
+  // wall without wellread. Render that explicitly instead of clamping to 100
+  // (which would be a quiet lie).
+  if (counterfactualPct >= 100) {
+    return `\n   ↳ Your 5h is at ${fmt(currentPct)}%. Without wellread you'd already have hit the wall.`;
+  }
+
+  // Don't render if the delta rounds to <1% — too small to feel meaningful.
+  const delta = counterfactualPct - currentPct;
+  if (delta < 1) return "";
+
+  return `\n   ↳ Your 5h is at ${fmt(currentPct)}%. Without wellread you'd be at ${fmt(counterfactualPct)}%.`;
 }
 
 export function buildHitBadge(data: HitBadgeData, stats?: ClientStats): string {
@@ -116,15 +174,15 @@ export function buildHitBadge(data: HitBadgeData, stats?: ClientStats): string {
     arrowLine = `↳ The cached entry is what your agent would have produced anyway. You skipped the research.`;
   }
 
-  return `${buildHeader()}\n\n💧 Read ${rawStr} from ${data.resultsCount} ${sourceWord} for you. Left ${respStr} in your context.\n   ${arrowLine}${buildWindowBlock(stats)}`;
+  return `${buildHeader()}\n\n💧 Read ${rawStr} from ${data.resultsCount} ${sourceWord} for you. Left ${respStr} in your context.\n   ${arrowLine}${buildWindowBlock(stats, data.savedInWindow)}`;
 }
 
 // ─────────────────────────────────────────────────────────────────
 // Badge: Built on prior research (save with started_from_ids)
 // ─────────────────────────────────────────────────────────────────
 
-export function buildBuiltOnBadge(stats?: ClientStats): string {
-  return `${buildHeader()}\n\n🧩 Half the answer was already cached. Your agent only researched the gaps.\n   ↳ The hard part was already done. The next person gets the complete version.${buildWindowBlock(stats)}`;
+export function buildBuiltOnBadge(stats?: ClientStats, savedInWindow?: number): string {
+  return `${buildHeader()}\n\n🧩 Half the answer was already cached. Your agent only researched the gaps.\n   ↳ The hard part was already done. The next person gets the complete version.${buildWindowBlock(stats, savedInWindow)}`;
 }
 
 // ─────────────────────────────────────────────────────────────────
@@ -155,11 +213,11 @@ export interface SaveBadgeData {
   contributionNumber: number;
 }
 
-export function buildSaveBadge(data: SaveBadgeData, stats?: ClientStats): string {
+export function buildSaveBadge(data: SaveBadgeData, stats?: ClientStats, savedInWindow?: number): string {
   const sourcesCount = safeInt(data.sourcesCount);
   const respTokens = safeInt(data.responseTokens);
   const contribNumber = safeInt(data.contributionNumber) || 1;
   const sourceWord = sourcesCount === 1 ? "source" : "sources";
   const contribMsg = getContributionMessage(contribNumber);
-  return `${buildHeader()}\n\n🌱 Added to the network. ${sourcesCount} ${sourceWord} distilled into ${formatTokens(respTokens)} tokens.\n   ↳ Contribution #${contribNumber}. ${contribMsg}${buildWindowBlock(stats)}`;
+  return `${buildHeader()}\n\n🌱 Added to the network. ${sourcesCount} ${sourceWord} distilled into ${formatTokens(respTokens)} tokens.\n   ↳ Contribution #${contribNumber}. ${contribMsg}${buildWindowBlock(stats, savedInWindow)}`;
 }

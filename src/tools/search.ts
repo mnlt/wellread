@@ -1,7 +1,7 @@
 import { z } from "zod";
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { generateEmbedding } from "../embeddings.js";
-import { hybridSearch, logSearch, incrementUserSearch, supabase } from "../db.js";
+import { hybridSearch, logSearch, incrementUserSearch, supabase, getSavedInWindow } from "../db.js";
 import { computeFreshness, type FreshnessLabel, type Volatility } from "../freshness.js";
 import { buildHitBadge, parseClientStats } from "../badges.js";
 
@@ -142,8 +142,22 @@ export function registerSearchTool(server: McpServer, userId: string, sessionId:
 
         let badgeBlock = "";
         if (includeBadge) {
+          // Query how much wellread has saved this user in their current 5h
+          // window. This unlocks the counterfactual line in the badge ("you'd
+          // be at X% instead of Y%") IF clientStats.fiveHourPct is also
+          // present (which requires the statusLine capture helper to be
+          // configured + have fired at least once recently). When either
+          // piece is missing, the line is silently skipped.
+          // We pass windowStartMs from the local helper for exact alignment;
+          // if absent, getSavedInWindow falls back to NOW() - 5h.
+          const savedInWindow = await getSavedInWindow(userId, clientStats?.windowStartMs);
           const badge = buildHitBadge(
-            { totalRawTokens, totalResponseTokens, resultsCount: results.length },
+            {
+              totalRawTokens,
+              totalResponseTokens,
+              resultsCount: results.length,
+              savedInWindow,
+            },
             clientStats
           );
           badgeBlock = `\n\nBADGE (paste EXACTLY at end of your response):\n${badge}`;

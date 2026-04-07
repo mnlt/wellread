@@ -290,3 +290,43 @@ export async function verifyResearch(researchId: string): Promise<void> {
     throw new Error(`Verify failed: ${error.message}`);
   }
 }
+
+/**
+ * Sum the user's tokens_saved from cache hits in their current 5h window.
+ *
+ * Used by the badge to compute "without wellread you'd be at X% instead of Y%"
+ * — the only number wellread can show that nobody else can. The math is:
+ *
+ *   counterfactual_pct = current_pct × (billable + saved) / billable
+ *
+ * Where current_pct comes from Anthropic's rate_limits header (via the
+ * statusLine capture), billable is the user's actual session usage, and saved
+ * is what THIS query returns: how many tokens the cache prevented from
+ * entering the conversation in the same window.
+ *
+ * If `windowStartMs` is provided (from the local helper), we use it as the
+ * exact cutoff — eliminates the off-by-window-overlap bias. If absent, we
+ * fall back to `NOW() - 5h` which is correct within minutes for the steady
+ * state but slightly overcounts at the very start of a fresh window.
+ *
+ * Returns 0 if there's an error or no hits — the badge then omits the line.
+ */
+export async function getSavedInWindow(userId: string, windowStartMs?: number): Promise<number> {
+  const cutoffMs = windowStartMs && Number.isFinite(windowStartMs)
+    ? windowStartMs
+    : Date.now() - 5 * 60 * 60 * 1000;
+  const cutoffIso = new Date(cutoffMs).toISOString();
+  const { data, error } = await supabase
+    .from("searches")
+    .select("tokens_saved")
+    .eq("user_id", userId)
+    .eq("matched", true)
+    .gte("created_at", cutoffIso);
+
+  if (error) {
+    console.error("getSavedInWindow error:", error.message);
+    return 0;
+  }
+  if (!data || data.length === 0) return 0;
+  return data.reduce((sum: number, row: { tokens_saved: number | null }) => sum + (row.tokens_saved ?? 0), 0);
+}

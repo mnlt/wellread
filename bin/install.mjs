@@ -12,6 +12,13 @@ const SERVER_URL = process.env.WELLREAD_URL || "https://wellread-production.up.r
 
 // usage-stats.mjs is shipped alongside this installer in bin/
 const USAGE_STATS_SCRIPT = readFileSync(join(__dirname, "usage-stats.mjs"), "utf-8");
+// capture-usage.mjs is the statusLine command that captures Anthropic's
+// rate_limits header into ~/.wellread/last-usage.json
+const CAPTURE_USAGE_SCRIPT = readFileSync(join(__dirname, "capture-usage.mjs"), "utf-8");
+
+// Tools that detect a non-wellread statusLine push the helper path here so the
+// installer can print a single warning at the end (instead of inline noise).
+const statusLineConflicts = [];
 
 // ── Styled output ──────────────────────────────────────
 
@@ -119,6 +126,11 @@ const tools = [
       const usageStatsPath = join(hooksDir, "usage-stats.mjs");
       writeFileSync(usageStatsPath, USAGE_STATS_SCRIPT, { mode: 0o755 });
 
+      // Write capture-usage helper (statusLine command — captures Anthropic's
+      // rate_limits header into ~/.wellread/last-usage.json)
+      const captureUsagePath = join(hooksDir, "capture-usage.mjs");
+      writeFileSync(captureUsagePath, CAPTURE_USAGE_SCRIPT, { mode: 0o755 });
+
       // MCP server config — update both ~/.claude.json and ~/.claude/settings.json
       // to avoid desync when one has an old API key
       const mcpEntry = {
@@ -179,6 +191,38 @@ const tools = [
             },
           ],
         });
+      }
+
+      // statusLine: install our capture-usage.mjs as Claude Code's status
+      // command. This is what unlocks the counterfactual line in the badge —
+      // capture-usage.mjs reads Claude Code's stdin payload (which contains
+      // Anthropic's rate_limits header) and writes it to last-usage.json.
+      //
+      // Wrapping behavior:
+      //  - If statusLine isn't set → set it to ours.
+      //  - If statusLine is already ours (or empty) → overwrite cleanly.
+      //  - If statusLine belongs to someone else → DON'T touch it. Print a
+      //    warning telling the user how to enable wellread's counterfactual
+      //    line manually. Their existing customization stays intact.
+      const captureCmd = `node ${captureUsagePath}`;
+      const existingStatus = config.statusLine && typeof config.statusLine === "object"
+        ? config.statusLine
+        : null;
+      const isOurStatusLine = existingStatus
+        && typeof existingStatus.command === "string"
+        && existingStatus.command.includes("capture-usage.mjs");
+      const isEmptyStatusLine = !existingStatus
+        || !existingStatus.command
+        || existingStatus.command.trim() === "";
+      if (isOurStatusLine || isEmptyStatusLine) {
+        config.statusLine = {
+          type: "command",
+          command: captureCmd,
+        };
+      } else {
+        // User has a custom statusLine — don't clobber it. Defer the warning
+        // to after the install loop so it doesn't get drowned in success ticks.
+        statusLineConflicts.push(captureUsagePath);
       }
 
       writeFileSync(configPath, JSON.stringify(config, null, 2));
@@ -380,6 +424,16 @@ async function main() {
     } catch (err) {
       warn(`${tool.name}: ${err.message}`);
     }
+  }
+
+  // 4. If we couldn't take over the statusLine (user has a custom one),
+  //    show them the manual setup so the counterfactual line can still work.
+  if (statusLineConflicts.length > 0) {
+    log("");
+    warn("Existing statusLine detected — left untouched.");
+    log(dim(`  To enable wellread's "without wellread you'd be at X%" line, set:`));
+    log(dim(`    statusLine.command = "node ${statusLineConflicts[0]}"`));
+    log(dim(`  in ~/.claude/settings.json. Or wrap your existing command to call both.`));
   }
 
   log("");

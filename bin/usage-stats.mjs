@@ -11,14 +11,22 @@
 //
 // Output schema:
 // {
-//   "windowStart": "09:00",
-//   "windowEnd":   "14:00",
-//   "turns":       435,           // turns in current 5h window across ALL projects
-//   "billable":    2688044,       // billable tokens in current 5h window across ALL projects
-//   "cacheRead":   105157686,     // cache_read tokens in current window across ALL projects
-//   "minutesLeft": 21,
-//   "contextSize": 521997         // current conversation's context size (current workspace only)
+//   "windowStart":   "09:00",       // local HH:MM, for display
+//   "windowEnd":     "14:00",       // local HH:MM, for display
+//   "windowStartMs": 1712039400000, // epoch ms — used by server to query exact window
+//   "turns":         435,           // turns in current 5h window across ALL projects
+//   "billable":      2688044,       // billable tokens in current 5h window across ALL projects
+//   "minutesLeft":   21,
+//   "contextSize":   521997,        // current conversation's context size (current workspace only)
+//   "fiveHourPct":   47,            // OPTIONAL — Anthropic's authoritative used % of 5h window
+//   "sevenDayPct":   39             // OPTIONAL — Anthropic's authoritative used % of 7d weekly
 // }
+//
+// fiveHourPct/sevenDayPct come from a sibling helper (capture-usage.mjs) that
+// runs as Claude Code's statusLine command and writes the latest API-header
+// rate_limits snapshot to ~/.wellread/last-usage.json. We read that file here
+// and merge in the percentages if they're recent enough. If the file doesn't
+// exist or is stale (>10 min) the fields are simply omitted from the output.
 
 import { readFileSync, readdirSync, statSync } from "node:fs";
 import { join } from "node:path";
@@ -167,14 +175,15 @@ try {
   }
 
   // 8. Sum usage in current window across ALL projects (account-wide rate limit)
+  // We deliberately skip cache_read tokens — they don't count toward the rate
+  // limit and aren't useful in the badge. Saving them in the JSON output would
+  // just bloat the prompt the agent receives every turn.
   let turns = 0;
   let billable = 0;
-  let cacheRead = 0;
   for (const m of messages) {
     if (m.time >= windowStart && m.time <= windowEnd) {
       turns++;
       billable += m.input + m.cacheCreation + m.output;
-      cacheRead += m.cacheRead;
     }
   }
 
@@ -199,12 +208,34 @@ try {
   const result = {
     windowStart: fmtTime(windowStart),
     windowEnd: fmtTime(windowEnd),
+    windowStartMs: windowStart, // epoch ms — server uses this for exact window queries
     turns,
     billable,
-    cacheRead,
     minutesLeft,
     contextSize,
   };
+
+  // 12. Merge in Anthropic's authoritative rate_limits percentages from the
+  //     statusLine capture, IF available and recent. capture-usage.mjs writes
+  //     this file every time Claude Code redraws its UI, so freshness is
+  //     usually <1s. We accept up to 10 min as "recent enough".
+  try {
+    const lastUsagePath = join(home, ".wellread", "last-usage.json");
+    const lastUsageRaw = readFileSync(lastUsagePath, "utf-8");
+    const lastUsage = JSON.parse(lastUsageRaw);
+    const capturedAtMs = Date.parse(lastUsage.capturedAt);
+    if (Number.isFinite(capturedAtMs) && now - capturedAtMs < 10 * 60 * 1000) {
+      if (lastUsage.fiveHour && typeof lastUsage.fiveHour.usedPercentage === "number") {
+        result.fiveHourPct = lastUsage.fiveHour.usedPercentage;
+      }
+      if (lastUsage.sevenDay && typeof lastUsage.sevenDay.usedPercentage === "number") {
+        result.sevenDayPct = lastUsage.sevenDay.usedPercentage;
+      }
+    }
+  } catch {
+    // last-usage.json doesn't exist yet, isn't readable, or is malformed.
+    // Fall through silently — the badge degrades to its existing display.
+  }
 
   process.stdout.write(JSON.stringify(result));
 } catch (err) {
