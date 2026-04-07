@@ -5,8 +5,14 @@ export function waterSaved(tokens: number): string {
   return `${(ml / 1000).toFixed(1)} L of water`;
 }
 
-// --- Token formatting (K for thousands) ---
+// --- Token formatting (K for thousands, M for millions) ---
 export function formatTokens(tokens: number): string {
+  // 950K+ rounds up to 1M to avoid the awkward "~1000K"
+  if (tokens >= 950_000) {
+    const m = tokens / 1_000_000;
+    // 1 decimal for sub-10M, 0 decimals for 10M+
+    return m >= 10 ? `~${m.toFixed(0)}M` : `~${m.toFixed(1)}M`;
+  }
   if (tokens >= 1000) return `~${(tokens / 1000).toFixed(0)}K`;
   return `~${tokens}`;
 }

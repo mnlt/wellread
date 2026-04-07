@@ -2,29 +2,16 @@ import { z } from "zod";
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { generateEmbedding } from "../embeddings.js";
 import { hybridSearch, logSearch, incrementUserSearch, supabase } from "../db.js";
-import { formatTokens, randomPick } from "../utils.js";
 import { computeFreshness, type FreshnessLabel, type Volatility } from "../freshness.js";
+import { buildHitBadge, parseClientStats } from "../badges.js";
 
-const CURRENT_HOOK_VERSION = 8;
+const CURRENT_HOOK_VERSION = 9;
 
 const FRESHNESS_ICON: Record<FreshnessLabel, string> = {
   fresh: "\u{1F7E2}",
   check: "\u{1F7E1}",
   stale: "\u{1F534}",
 };
-
-const MATCH_QUIPS = [
-  "Time saved. Coffee earned.",
-  "Snack-sized: same taste, fewer tokens.",
-  "Your context window says thank you.",
-  "Efficiency is the new cool.",
-  "tokens walk into a bar. You kept them.",
-  "Your token budget just did a moonwalk.",
-  "A datacenter somewhere just exhaled.",
-  "A GPU cooled down. A river kept flowing.",
-  "Research recycling. It's a thing now.",
-  "Legally stolen from the collective brain.",
-];
 
 export function registerSearchTool(server: McpServer, userId: string, sessionId: string) {
   server.tool(
@@ -35,8 +22,9 @@ export function registerSearchTool(server: McpServer, userId: string, sessionId:
       keywords: z.string().describe("Space-separated keywords for exact matching"),
       agent: z.string().optional().describe("Which tool is calling: claude-code, cursor, gemini-cli, windsurf, etc."),
       hook_version: z.union([z.number(), z.string()]).optional().describe("Your WELLREAD_HOOK_VERSION number. Pass it exactly as shown in your instructions."),
+      client_stats: z.union([z.string(), z.record(z.string(), z.any())]).optional().describe("JSON object/string from the local helper with current 5h window stats. Pass exactly as shown in your hook instructions."),
     },
-    async ({ queries: rawQueries, keywords, agent, hook_version: rawHookVersion }) => {
+    async ({ queries: rawQueries, keywords, agent, hook_version: rawHookVersion, client_stats: rawClientStats }) => {
       // Parameter coercion: accept string or array for queries, string or number for hook_version
       let queries: string[];
       if (typeof rawQueries === "string") {
@@ -45,6 +33,7 @@ export function registerSearchTool(server: McpServer, userId: string, sessionId:
         queries = rawQueries;
       }
       const hook_version = rawHookVersion != null ? Number(rawHookVersion) || undefined : undefined;
+      const clientStats = parseClientStats(rawClientStats);
       try {
         // Build update notice if hook is outdated
         const updateNotice = (hook_version && hook_version < CURRENT_HOOK_VERSION)
@@ -127,43 +116,44 @@ export function registerSearchTool(server: McpServer, userId: string, sessionId:
         incrementUserSearch(userId, effectiveMatch, tokensSavedForUser);
 
         const totalRawTokens = results.reduce((sum, r) => sum + r.raw_tokens, 0);
-
-        // Badge — same for full and partial match
-        const quip = randomPick(MATCH_QUIPS);
-        const tokensStr = formatTokens(totalRawTokens);
-        // Special case: quip 5 includes dynamic token count
-        const displayQuip = quip === "tokens walk into a bar. You kept them."
-          ? `${tokensStr} tokens walk into a bar. You kept them.`
-          : quip;
-        const totalSources = results.reduce((sum, r) => sum + r.sources.length, 0);
-        const hitLine = `Hit ${results.length} prior research${results.length > 1 ? "es" : ""}, skipped ${totalSources} source${totalSources !== 1 ? "s" : ""}.`;
-        const badge = `── **wellread.md** ──\n\n**🔥 You just saved ${tokensStr} tokens!**\n\n${hitLine}\n\n${displayQuip}\n\n*(say "show me my wellread stats" to see your impact)*`;
+        const totalResponseTokens = results.reduce((sum, r) => sum + r.response_tokens, 0);
 
         const matchedIds = results.map((r) => r.id);
         let nextSteps: string;
+        let includeBadge = false; // Only "full + fresh" gets the search badge — other cases save afterwards and the save badge fires
 
         if (effectiveMatch === "full" && topFreshness === "fresh") {
-          // High confidence: use directly
+          // High confidence: use directly. Badge fires here.
           nextSteps = `\n\nRespond to the user using the results above.`;
+          includeBadge = true;
         } else if (effectiveMatch === "full" && topFreshness === "check") {
-          // Good match but may be outdated — quick verify
+          // Good match but may be outdated — quick verify, then save with verify_id (badge from save)
           const checkIds = results
             .filter((_, i) => freshnessResults[i].label === "check")
             .map((r) => r.id);
           nextSteps = `\n\nRespond using these results, but do ONE web search to spot-check if anything major changed. This is NOT a deep research — just confirm the core facts still hold.\n\nThen call save:\n- Still accurate → save with verify_id: ${JSON.stringify(checkIds)}\n- Outdated → save with replaces_id: ${JSON.stringify(checkIds[0])} and the corrected info`;
         } else {
-          // Partial match or stale full match — re-research
+          // Partial match or stale full match — re-research, then save (badge from save)
           const staleNote = topFreshness === "stale"
             ? " (results found but marked stale — treat as starting point, not answer)"
             : "";
           nextSteps = `\n\nPARTIAL MATCH${staleNote}. Do a web search to fill the gaps — do NOT use training data alone.\n\nAfter researching, call save to save your findings with started_from_ids: ${JSON.stringify(matchedIds)}`;
         }
 
+        let badgeBlock = "";
+        if (includeBadge) {
+          const badge = buildHitBadge(
+            { totalRawTokens, totalResponseTokens, resultsCount: results.length },
+            clientStats
+          );
+          badgeBlock = `\n\nBADGE (paste EXACTLY at end of your response):\n${badge}`;
+        }
+
         return {
           content: [
             {
               type: "text" as const,
-              text: `${updateNotice}Found ${results.length} prior research entries (match: ${effectiveMatch}, freshness: ${topFreshness}, similarity: ${topSimilarity.toFixed(3)}):\n\n${formatted.join("\n\n")}${nextSteps}\n\nBADGE (paste EXACTLY at end of your response):\n${badge}`,
+              text: `${updateNotice}Found ${results.length} prior research entries (match: ${effectiveMatch}, freshness: ${topFreshness}, similarity: ${topSimilarity.toFixed(3)}):\n\n${formatted.join("\n\n")}${nextSteps}${badgeBlock}`,
             },
           ],
         };

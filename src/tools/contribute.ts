@@ -1,21 +1,8 @@
 import { z } from "zod";
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { generateEmbedding } from "../embeddings.js";
-import { insertResearch, incrementUserContributions, verifyResearch } from "../db.js";
-import { randomPick } from "../utils.js";
-
-const CONTRIBUTION_QUIPS = [
-  "First one here. Enjoy the silence.",
-  "Uncharted territory. You just charted it.",
-  "Fresh knowledge. Still warm.",
-  "You broke new ground. The ground says thanks.",
-  "The hive mind just learned something new.",
-  "The network just got smarter.",
-  "First hit. No cache. All you.",
-  "This one's going in the vault.",
-  "That was virgin territory. Was.",
-  "Nobody asked this before? Really?",
-];
+import { insertResearch, incrementUserContributions, verifyResearch, supabase } from "../db.js";
+import { buildSaveBadge, buildBuiltOnBadge, parseClientStats } from "../badges.js";
 
 async function processContributionAsync(
   userId: string,
@@ -81,8 +68,9 @@ search_surface MUST use this format:
       started_from_ids: z.union([z.array(z.string()), z.string()]).optional().describe("IDs of research entries this was built from. Pass the IDs from the search results."),
       volatility: z.enum(["timeless", "stable", "evolving", "volatile"]).optional().describe("How quickly this knowledge changes. timeless=established facts, stable=mature frameworks, evolving=active libraries, volatile=betas/pre-releases. Default: stable"),
       verify_id: z.string().optional().describe("ID of an existing research entry to mark as still accurate. Updates its freshness clock instead of creating a new entry. Use after a 'check' freshness result when you confirmed the info is still valid."),
+      client_stats: z.union([z.string(), z.record(z.string(), z.any())]).optional().describe("JSON object/string from the local helper with current 5h window stats. Pass exactly as shown in your hook instructions."),
     },
-    async ({ search_surface, content, sources: rawSources, tags: rawTags, gaps: rawGaps, raw_tokens: rawRawTokens, response_tokens: rawResponseTokens, replaces_id, started_from_ids: rawStartedFrom, volatility, verify_id }) => {
+    async ({ search_surface, content, sources: rawSources, tags: rawTags, gaps: rawGaps, raw_tokens: rawRawTokens, response_tokens: rawResponseTokens, replaces_id, started_from_ids: rawStartedFrom, volatility, verify_id, client_stats: rawClientStats }) => {
       // Parameter coercion — LLMs send arrays as JSON strings or comma-separated strings
       function coerceStringArray(raw: string | string[]): string[] {
         if (Array.isArray(raw)) return raw.map(s => s.replace(/^["'\[\]]+|["'\[\]]+$/g, '').trim()).filter(Boolean);
@@ -102,6 +90,7 @@ search_surface MUST use this format:
           ? (rawStartedFrom.startsWith("[") ? JSON.parse(rawStartedFrom) : [rawStartedFrom])
           : rawStartedFrom)
         : [];
+      const clientStats = parseClientStats(rawClientStats);
 
       try {
         // Verification mode: refresh the freshness clock without creating a new entry
@@ -176,9 +165,32 @@ search_surface MUST use this format:
           volatility: volatility ?? "stable",
         });
 
-        const quip = randomPick(CONTRIBUTION_QUIPS);
-        const sourceWord = sources.length === 1 ? "source" : "sources";
-        const badge = `── **wellread.md** ──\n\n**🗺️ Added to the network!**\n\n${sources.length} ${sourceWord} distilled into a ~${response_tokens}-token entry. Future devs skip your work.\n\n${quip}\n\n*(say "show me my wellread stats" to see your impact)*`;
+        // Read the user's current contribution count to compute the badge milestone number.
+        // This is the count BEFORE the async insert lands, so we add 1 for "the one we just saved".
+        let contributionNumber = 1;
+        try {
+          const { data: user } = await supabase
+            .from("users")
+            .select("contribution_count")
+            .eq("id", userId)
+            .single();
+          contributionNumber = (user?.contribution_count ?? 0) + 1;
+        } catch {
+          // If the lookup fails, fall back to 1 — the badge still works
+        }
+
+        // Pick the right badge: built-on (came from a partial hit) vs new contribution
+        const isBuiltOn = started_from_ids.length > 0;
+        const badge = isBuiltOn
+          ? buildBuiltOnBadge(clientStats)
+          : buildSaveBadge(
+              {
+                sourcesCount: sources.length,
+                responseTokens: response_tokens,
+                contributionNumber,
+              },
+              clientStats
+            );
 
         return {
           content: [

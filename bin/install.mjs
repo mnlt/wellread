@@ -1,12 +1,17 @@
 #!/usr/bin/env node
 
 import { existsSync, readFileSync, writeFileSync, mkdirSync } from "fs";
-import { join } from "path";
+import { dirname, join } from "path";
+import { fileURLToPath } from "url";
 import { homedir } from "os";
 import { execFileSync } from "child_process";
 
 const HOME = homedir();
+const __dirname = dirname(fileURLToPath(import.meta.url));
 const SERVER_URL = process.env.WELLREAD_URL || "https://wellread-production.up.railway.app/mcp";
+
+// usage-stats.mjs is shipped alongside this installer in bin/
+const USAGE_STATS_SCRIPT = readFileSync(join(__dirname, "usage-stats.mjs"), "utf-8");
 
 // ── Styled output ──────────────────────────────────────
 
@@ -73,11 +78,15 @@ const HOOK_SCRIPT = `#!/bin/bash
 INPUT=$(cat)
 PROMPT=$(echo "$INPUT" | python3 -c "import sys,json; print(json.load(sys.stdin).get('prompt',''))" 2>/dev/null || echo "")
 if [ \${#PROMPT} -lt 20 ]; then exit 0; fi
-cat <<'HOOKEOF'
+
+# Read current 5h window stats from local Claude Code logs (silently empty on any failure)
+STATS=$(node "$HOME/.wellread/usage-stats.mjs" "$PWD" 2>/dev/null || echo "{}")
+
+cat <<HOOKEOF
 Wellread caches PUBLIC research (libraries, APIs, frameworks). Skip for chitchat or pure local-code (review, refactor, grep). For everything else:
-1. SEARCH FIRST: mcp__wellread__search(hook_version:8, queries:[3 variants], keywords:"terms") - no parallel, await.
+1. SEARCH FIRST: mcp__wellread__search(hook_version:9, queries:[3 variants], keywords:"terms", client_stats:'\${STATS}') - no parallel, await.
 2. Freshness: fresh->answer | check->web verify + save(verify_id) | stale->re-research + save.
-3. Save public research findings (https:// sources only).
+3. Save public research findings: mcp__wellread__save(..., client_stats:'\${STATS}'). Sources MUST be https:// URLs.
 4. Hit? Append badge.
 HOOKEOF`;
 
@@ -87,7 +96,7 @@ const RULES_MD = `# Wellread — Collective Research Memory
 
 Wellread caches PUBLIC research (libraries, APIs, frameworks). Skip for chitchat or pure local-code (review, refactor, grep). For everything else:
 
-1. SEARCH FIRST: wellread search (hook_version:8, queries:[3 variants], keywords:"terms") - no parallel, await.
+1. SEARCH FIRST: wellread search (hook_version:9, queries:[3 variants], keywords:"terms") - no parallel, await.
 2. Freshness: fresh->answer | check->web verify + save(verify_id) | stale->re-research + save.
 3. Save public research findings (https:// sources only).
 4. Hit? Append badge.
@@ -105,6 +114,10 @@ const tools = [
       if (!existsSync(hooksDir)) mkdirSync(hooksDir, { recursive: true });
       const hookPath = join(hooksDir, "hook.sh");
       writeFileSync(hookPath, HOOK_SCRIPT, { mode: 0o755 });
+
+      // Write usage-stats helper (reads local Claude Code JSONL logs)
+      const usageStatsPath = join(hooksDir, "usage-stats.mjs");
+      writeFileSync(usageStatsPath, USAGE_STATS_SCRIPT, { mode: 0o755 });
 
       // MCP server config — update both ~/.claude.json and ~/.claude/settings.json
       // to avoid desync when one has an old API key
