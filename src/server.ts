@@ -78,6 +78,31 @@ app.post("/register", registerLimiter, async (req: Request, res: Response) => {
   }
 });
 
+// --- REST endpoint: update user profile (name) ---
+app.patch("/user", async (req: Request, res: Response) => {
+  try {
+    const userId = await authenticateRequest(req);
+    if (!userId) {
+      res.status(401).json({ error: "Unauthorized" });
+      return;
+    }
+    const { name } = req.body ?? {};
+    if (!name || typeof name !== "string" || name.trim().length === 0) {
+      res.status(400).json({ error: "name is required" });
+      return;
+    }
+    const trimmed = name.trim().slice(0, 40); // cap length
+    const { error } = await supabase
+      .from("users")
+      .update({ name: trimmed })
+      .eq("id", userId);
+    if (error) throw error;
+    res.json({ name: trimmed });
+  } catch (err) {
+    res.status(500).json({ error: err instanceof Error ? err.message : String(err) });
+  }
+});
+
 // --- MCP endpoint ---
 app.post("/mcp", async (req: Request, res: Response) => {
   const sessionId = req.headers["mcp-session-id"] as string | undefined;

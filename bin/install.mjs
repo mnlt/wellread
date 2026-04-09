@@ -10,15 +10,7 @@ const HOME = homedir();
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const SERVER_URL = process.env.WELLREAD_URL || "https://wellread-production.up.railway.app/mcp";
 
-// usage-stats.mjs is shipped alongside this installer in bin/
-const USAGE_STATS_SCRIPT = readFileSync(join(__dirname, "usage-stats.mjs"), "utf-8");
-// capture-usage.mjs is the statusLine command that captures Anthropic's
-// rate_limits header into ~/.wellread/last-usage.json
-const CAPTURE_USAGE_SCRIPT = readFileSync(join(__dirname, "capture-usage.mjs"), "utf-8");
 
-// Tools that detect a non-wellread statusLine push the helper path here so the
-// installer can print a single warning at the end (instead of inline noise).
-const statusLineConflicts = [];
 
 // ── Styled output ──────────────────────────────────────
 
@@ -86,14 +78,11 @@ INPUT=$(cat)
 PROMPT=$(echo "$INPUT" | python3 -c "import sys,json; print(json.load(sys.stdin).get('prompt',''))" 2>/dev/null || echo "")
 if [ \${#PROMPT} -lt 20 ]; then exit 0; fi
 
-# Read current 5h window stats from local Claude Code logs (silently empty on any failure)
-STATS=$(node "$HOME/.wellread/usage-stats.mjs" "$PWD" 2>/dev/null || echo "{}")
-
 cat <<HOOKEOF
 Wellread caches PUBLIC research (libraries, APIs, frameworks). Skip for chitchat or pure local-code (review, refactor, grep). For everything else:
-1. SEARCH FIRST: mcp__wellread__search(hook_version:9, queries:[3 variants], keywords:"terms", client_stats:'\${STATS}') - no parallel, await.
+1. SEARCH FIRST: mcp__wellread__search(hook_version:9, queries:[3 variants], keywords:"terms") - no parallel, await.
 2. Freshness: fresh->answer | check->web verify + save(verify_id) | stale->re-research + save.
-3. Save public research findings: mcp__wellread__save(..., client_stats:'\${STATS}'). Sources MUST be https:// URLs.
+3. Save public research findings. Sources MUST be https:// URLs.
 4. Hit? Append badge.
 HOOKEOF`;
 
@@ -121,15 +110,6 @@ const tools = [
       if (!existsSync(hooksDir)) mkdirSync(hooksDir, { recursive: true });
       const hookPath = join(hooksDir, "hook.sh");
       writeFileSync(hookPath, HOOK_SCRIPT, { mode: 0o755 });
-
-      // Write usage-stats helper (reads local Claude Code JSONL logs)
-      const usageStatsPath = join(hooksDir, "usage-stats.mjs");
-      writeFileSync(usageStatsPath, USAGE_STATS_SCRIPT, { mode: 0o755 });
-
-      // Write capture-usage helper (statusLine command — captures Anthropic's
-      // rate_limits header into ~/.wellread/last-usage.json)
-      const captureUsagePath = join(hooksDir, "capture-usage.mjs");
-      writeFileSync(captureUsagePath, CAPTURE_USAGE_SCRIPT, { mode: 0o755 });
 
       // MCP server config — update both ~/.claude.json and ~/.claude/settings.json
       // to avoid desync when one has an old API key
@@ -191,38 +171,6 @@ const tools = [
             },
           ],
         });
-      }
-
-      // statusLine: install our capture-usage.mjs as Claude Code's status
-      // command. This is what unlocks the counterfactual line in the badge —
-      // capture-usage.mjs reads Claude Code's stdin payload (which contains
-      // Anthropic's rate_limits header) and writes it to last-usage.json.
-      //
-      // Wrapping behavior:
-      //  - If statusLine isn't set → set it to ours.
-      //  - If statusLine is already ours (or empty) → overwrite cleanly.
-      //  - If statusLine belongs to someone else → DON'T touch it. Print a
-      //    warning telling the user how to enable wellread's counterfactual
-      //    line manually. Their existing customization stays intact.
-      const captureCmd = `node ${captureUsagePath}`;
-      const existingStatus = config.statusLine && typeof config.statusLine === "object"
-        ? config.statusLine
-        : null;
-      const isOurStatusLine = existingStatus
-        && typeof existingStatus.command === "string"
-        && existingStatus.command.includes("capture-usage.mjs");
-      const isEmptyStatusLine = !existingStatus
-        || !existingStatus.command
-        || existingStatus.command.trim() === "";
-      if (isOurStatusLine || isEmptyStatusLine) {
-        config.statusLine = {
-          type: "command",
-          command: captureCmd,
-        };
-      } else {
-        // User has a custom statusLine — don't clobber it. Defer the warning
-        // to after the install loop so it doesn't get drowned in success ticks.
-        statusLineConflicts.push(captureUsagePath);
       }
 
       writeFileSync(configPath, JSON.stringify(config, null, 2));
@@ -381,6 +329,59 @@ ${RULES_MD}`;
   },
 ];
 
+// ── Random name generator (adjective-animal-NNNN) ─────
+
+const ADJECTIVES = [
+  "swift","bright","calm","bold","keen","warm","cool","wild","free","kind",
+  "deep","fair","glad","pure","wise","brave","crisp","deft","firm","fond",
+  "grand","hale","just","lush","mild","neat","prime","rare","safe","sage",
+  "tall","true","vast","avid","epic","hardy","jolly","lucid","lunar","noble",
+  "opal","plush","polar","quiet","rapid","regal","risen","royal","sleek","solar",
+  "sonic","stark","sunny","tidal","vivid","witty","young","agile","amber","azure",
+  "cedar","coral","ember","flint","frost","ivory","jade","maple","misty","onyx",
+  "pixel","prism","rustic","silver","velvet","focal","gilt","ionic","ultra","major",
+];
+
+const ANIMALS = [
+  "otter","hawk","fox","panda","wolf","eagle","lynx","heron","falcon","crane",
+  "raven","cobra","bison","whale","shark","tiger","finch","gecko","koala","lemur",
+  "moose","newt","okapi","quail","robin","sloth","stork","tapir","viper","wren",
+  "yak","zebra","alpaca","badger","camel","dingo","egret","ferret","grouse","hare",
+  "ibis","jackal","kiwi","lark","mink","narwhal","osprey","parrot","puma","rook",
+  "salmon","tern","vole","walrus","condor","dove","ermine","gull","hippo","iguana",
+  "jay","koi","lion","marten","ocelot","penguin","quetzal","seal","toucan","vulture",
+  "wombat","axolotl","bobcat","cicada","drake","rail","urchin","swift","nuthatch","umbra",
+];
+
+function generateRandomName() {
+  const adj = ADJECTIVES[Math.floor(Math.random() * ADJECTIVES.length)];
+  const animal = ANIMALS[Math.floor(Math.random() * ANIMALS.length)];
+  const token = String(Math.floor(Math.random() * 10000)).padStart(4, "0");
+  return `${adj}-${animal}-${token}`;
+}
+
+// ── Username prompt ───────────────────────────────────
+
+async function promptUsername() {
+  const { createInterface } = await import("readline");
+  const rl = createInterface({ input: process.stdin, output: process.stdout });
+  return new Promise((resolve) => {
+    rl.question(`  Pick a username (or Enter for a random one): `, (answer) => {
+      rl.close();
+      const trimmed = answer.trim();
+      if (trimmed) {
+        // Sanitize: lowercase, replace spaces with hyphens, remove non-alphanumeric
+        const clean = trimmed.toLowerCase().replace(/\s+/g, "-").replace(/[^a-z0-9-]/g, "").slice(0, 30);
+        resolve(clean || generateRandomName());
+      } else {
+        const randomName = generateRandomName();
+        log(dim(`  → ${randomName}`));
+        resolve(randomName);
+      }
+    });
+  });
+}
+
 // ── Main ───────────────────────────────────────────────
 
 async function main() {
@@ -426,14 +427,30 @@ async function main() {
     }
   }
 
-  // 4. If we couldn't take over the statusLine (user has a custom one),
-  //    show them the manual setup so the counterfactual line can still work.
-  if (statusLineConflicts.length > 0) {
-    log("");
-    warn("Existing statusLine detected — left untouched.");
-    log(dim(`  To enable wellread's "without wellread you'd be at X%" line, set:`));
-    log(dim(`    statusLine.command = "node ${statusLineConflicts[0]}"`));
-    log(dim(`  in ~/.claude/settings.json. Or wrap your existing command to call both.`));
+  // 4. Username prompt — after everything works, ask for a community name.
+  //    Skip = random name (haikunator-style: adjective-animal-NNNN).
+  //    The name is displayed in badges when others hit your research.
+  log("");
+  const username = await promptUsername();
+  if (username) {
+    try {
+      const baseUrl = SERVER_URL.replace("/mcp", "");
+      const res = await fetch(`${baseUrl}/user`, {
+        method: "PATCH",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${apiKey}`,
+        },
+        body: JSON.stringify({ name: username }),
+      });
+      if (res.ok) {
+        success(`You're @${username} in the community`);
+      } else {
+        warn("Couldn't save username — you can set it later with: npx wellread name");
+      }
+    } catch {
+      warn("Couldn't save username — you can set it later with: npx wellread name");
+    }
   }
 
   log("");

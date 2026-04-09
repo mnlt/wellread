@@ -1,8 +1,17 @@
 import { z } from "zod";
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { generateEmbedding } from "../embeddings.js";
-import { insertResearch, incrementUserContributions, verifyResearch, supabase, getSavedInWindow } from "../db.js";
-import { buildSaveBadge, buildBuiltOnBadge, parseClientStats } from "../badges.js";
+import { insertResearch, incrementUserContributions, verifyResearch, supabase } from "../db.js";
+import { buildSaveBadge, buildBuiltOnBadge } from "../badges.js";
+
+// Compute the age in whole days between an ISO timestamp and now.
+// Used for the "verified Xd ago" line on built-on badges.
+function ageDaysFrom(isoTimestamp: string | null | undefined): number {
+  if (!isoTimestamp) return 0;
+  const ms = Date.now() - new Date(isoTimestamp).getTime();
+  if (!Number.isFinite(ms) || ms < 0) return 0;
+  return Math.floor(ms / 86400000);
+}
 
 async function processContributionAsync(
   userId: string,
@@ -70,7 +79,7 @@ search_surface MUST use this format:
       verify_id: z.string().optional().describe("ID of an existing research entry to mark as still accurate. Updates its freshness clock instead of creating a new entry. Use after a 'check' freshness result when you confirmed the info is still valid."),
       client_stats: z.union([z.string(), z.record(z.string(), z.any())]).optional().describe("JSON object/string from the local helper with current 5h window stats. Pass exactly as shown in your hook instructions."),
     },
-    async ({ search_surface, content, sources: rawSources, tags: rawTags, gaps: rawGaps, raw_tokens: rawRawTokens, response_tokens: rawResponseTokens, replaces_id, started_from_ids: rawStartedFrom, volatility, verify_id, client_stats: rawClientStats }) => {
+    async ({ search_surface, content, sources: rawSources, tags: rawTags, gaps: rawGaps, raw_tokens: rawRawTokens, response_tokens: rawResponseTokens, replaces_id, started_from_ids: rawStartedFrom, volatility, verify_id }) => {
       // Parameter coercion — LLMs send arrays as JSON strings or comma-separated strings
       function coerceStringArray(raw: string | string[]): string[] {
         if (Array.isArray(raw)) return raw.map(s => s.replace(/^["'\[\]]+|["'\[\]]+$/g, '').trim()).filter(Boolean);
@@ -90,7 +99,7 @@ search_surface MUST use this format:
           ? (rawStartedFrom.startsWith("[") ? JSON.parse(rawStartedFrom) : [rawStartedFrom])
           : rawStartedFrom)
         : [];
-      const clientStats = parseClientStats(rawClientStats);
+
 
       try {
         // Verification mode: refresh the freshness clock without creating a new entry
@@ -179,27 +188,74 @@ search_surface MUST use this format:
           // If the lookup fails, fall back to 1 — the badge still works
         }
 
-        // Query how much wellread saved this user in the current 5h window.
-        // Combined with clientStats.fiveHourPct (from statusLine capture, may
-        // be absent), this lets the badge show the counterfactual line
-        // "you'd be at X% instead of Y%". When fiveHourPct is missing, the
-        // line is silently skipped. windowStartMs from the local helper gives
-        // exact window alignment; absent means fallback to NOW() - 5h.
-        const savedInWindow = await getSavedInWindow(userId, clientStats?.windowStartMs);
-
-        // Pick the right badge: built-on (came from a partial hit) vs new contribution
+        // Pick the right badge: built-on (came from a partial hit) vs fresh save.
+        // For built-on, we need the cached entries' metadata (sources, age,
+        // volatility, raw/response tokens) so the badge can show the
+        // "skipped X tokens · cached: host (Yd) · added: ..." line.
         const isBuiltOn = started_from_ids.length > 0;
-        const badge = isBuiltOn
-          ? buildBuiltOnBadge(clientStats, savedInWindow)
-          : buildSaveBadge(
-              {
-                sourcesCount: sources.length,
-                responseTokens: response_tokens,
-                contributionNumber,
-              },
-              clientStats,
-              savedInWindow
-            );
+        let badge: string;
+        if (isBuiltOn) {
+          // Fetch the cached entries the agent built on. We use these to compute
+          // the "skipped tokens" delta, show which sources came from cache, AND
+          // count distinct contributors (excluding the current user) for the
+          // human-framed header line.
+          const { data: cachedRows } = await supabase
+            .from("research")
+            .select("user_id, raw_tokens, response_tokens, volatility, last_verified_at, created_at, sources")
+            .in("id", started_from_ids)
+            .order("last_verified_at", { ascending: false, nullsFirst: false });
+
+          const cached = cachedRows ?? [];
+          const cachedRawTokens = cached.reduce((s, r) => s + (r.raw_tokens ?? 0), 0);
+          const cachedResponseTokens = cached.reduce((s, r) => s + (r.response_tokens ?? 0), 0);
+          const top = cached[0];
+          const cachedTopVolatility = top?.volatility ?? "stable";
+          const cachedTopAgeDays = ageDaysFrom(top?.last_verified_at ?? top?.created_at);
+          const cachedSources: string[] = cached.flatMap((r) =>
+            Array.isArray(r.sources) ? r.sources : []
+          );
+
+          // Count distinct OTHER contributors and get the top contributor's name.
+          const otherUserIds = cached
+            .map((r) => r.user_id)
+            .filter((uid) => uid && uid !== userId);
+          const otherDevsCount = new Set(otherUserIds).size;
+
+          let topContributorName: string | null = null;
+          const topUserId = top?.user_id;
+          if (topUserId && topUserId !== userId) {
+            try {
+              const { data: userData } = await supabase
+                .from("users")
+                .select("name")
+                .eq("id", topUserId)
+                .single();
+              topContributorName = userData?.name ?? null;
+            } catch {}
+          }
+
+          badge = buildBuiltOnBadge(
+            {
+              startedFromCount: started_from_ids.length,
+              cachedRawTokens,
+              cachedResponseTokens,
+              cachedTopVolatility,
+              cachedTopAgeDays,
+              cachedSources,
+              newSources: sources,
+              contributionNumber,
+              otherDevsCount,
+              topContributorName,
+            }
+          );
+        } else {
+          badge = buildSaveBadge(
+            {
+              sources,
+              contributionNumber,
+            }
+          );
+        }
 
         return {
           content: [
