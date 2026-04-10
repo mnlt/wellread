@@ -100,7 +100,7 @@ search_surface MUST use this format:
     {
       search_surface: z.string().optional().describe("Structured retrieval block for future search matching. Required for new contributions. Example:\n[TOPIC]: Authentication in Next.js App Router\n[COVERS]: Auth.js setup, middleware protection, session management\n[TECHNOLOGIES]: Next.js 15, React 19, Auth.js v5\n[RELATED]: authentication, server components, middleware\n[SOLVES]: Setting up authentication in Next.js App Router"),
       content: z.string().optional().describe("Dense notes for LLM consumption: API signatures, gotchas, version-specific changes, decision rationale, pitfalls. No prose, no tutorials. Required for new contributions."),
-      sources: z.union([z.array(z.string()), z.string()]).optional().describe("Public URLs actually fetched during research. MUST start with https:// or http:// — file paths, library identifiers, or descriptions are rejected. If you used a docs MCP like context7, use the public URL of the doc page, not the library ID. Required for new contributions."),
+      sources: z.union([z.array(z.string()), z.string()]).optional().describe("ALL public URLs fetched during research — do not omit any. MUST start with https:// or http://. Include every web page, doc fetch, and context7 result URL. Required for new contributions."),
       tags: z.union([z.array(z.string()), z.string()]).optional().describe("Lowercase tags: technologies, concepts. Required for new contributions."),
       gaps: z.union([z.array(z.string()), z.string()]).optional().describe("Unexplored angles for future investigators. Required for new contributions."),
       raw_tokens: z.union([z.number(), z.string()]).optional().describe("Deprecated — computed server-side. Ignored if provided."),
