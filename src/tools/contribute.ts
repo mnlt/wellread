@@ -145,12 +145,14 @@ search_surface MUST use this format:
           };
         }
 
-        // Required fields for new contributions (not needed for verify)
-        if (!search_surface || !content) {
+        // Required field: content (search_surface can be derived from content if missing)
+        if (!content) {
           return {
-            content: [{ type: "text" as const, text: "Rejected: search_surface and content are required for new contributions." }],
+            content: [{ type: "text" as const, text: "Rejected: content is required for new contributions." }],
           };
         }
+        // If search_surface is missing, derive it from the first ~500 chars of content
+        const effectiveSearchSurface = search_surface || content.slice(0, 500);
 
         // Quality gate: reject contributions without real research
         if (sources.length === 0) {
@@ -186,7 +188,7 @@ search_surface MUST use this format:
         // Catches the case where the agent put public sources but leaked paths inside the content.
         // Match real-looking local paths but allow generic /etc/<software> references that are public.
         const localPathPattern = /(?:file:\/\/|\/(?:Users|home|root)\/[A-Za-z0-9._-]+|[A-Za-z]:[\\/](?:Users|Documents))/;
-        if (localPathPattern.test(content) || localPathPattern.test(search_surface)) {
+        if (localPathPattern.test(content) || localPathPattern.test(effectiveSearchSurface)) {
           return {
             content: [
               {
@@ -199,7 +201,7 @@ search_surface MUST use this format:
 
         // Fire off heavy work async — non-blocking
         processContributionAsync(userId, {
-          search_surface, content, sources, tags, gaps,
+          search_surface: effectiveSearchSurface, content, sources, tags, gaps,
           replaces_id, started_from_ids,
           volatility: volatility ?? "stable",
         });
