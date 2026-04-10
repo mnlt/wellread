@@ -13,6 +13,26 @@ function ageDaysFrom(isoTimestamp: string | null | undefined): number {
   return Math.floor(ms / 86400000);
 }
 
+// Fetch a URL and return its text content length in chars.
+// Returns 0 on any failure — never blocks the save pipeline.
+async function fetchSourceChars(url: string): Promise<number> {
+  try {
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 10000);
+    const res = await fetch(url, {
+      signal: controller.signal,
+      headers: { "User-Agent": "wellread-mcp/token-counter" },
+    });
+    clearTimeout(timeout);
+    if (!res.ok) return 0;
+    const text = await res.text();
+    // Strip HTML tags to approximate the text content the agent saw
+    return text.replace(/<[^>]*>/g, "").replace(/\s+/g, " ").trim().length;
+  } catch {
+    return 0;
+  }
+}
+
 async function processContributionAsync(
   userId: string,
   data: {
@@ -21,30 +41,42 @@ async function processContributionAsync(
     sources: string[];
     tags: string[];
     gaps: string[];
-    raw_tokens: number;
-    response_tokens: number;
     replaces_id?: string;
     started_from_ids?: string[];
     volatility?: string;
   }
 ): Promise<void> {
   try {
+    // Compute response_tokens from actual content length (exact, not agent-estimated)
+    const response_tokens = Math.ceil(data.content.length / 4);
+
     const embedding = await generateEmbedding(data.search_surface);
-    await insertResearch({
+    const result = await insertResearch({
       user_id: userId,
       content: data.content,
       gaps: data.gaps,
       sources: data.sources,
       search_surface: data.search_surface,
       tags: data.tags,
-      raw_tokens: data.raw_tokens,
-      response_tokens: data.response_tokens,
+      raw_tokens: 0, // placeholder — updated below after fetching sources
+      response_tokens,
       embedding,
       replaces_id: data.replaces_id,
       started_from_ids: data.started_from_ids,
       volatility: data.volatility,
     });
-    incrementUserContributions(userId, data.raw_tokens, data.response_tokens);
+    incrementUserContributions(userId, 0, response_tokens);
+
+    // Fetch sources in parallel and compute actual raw_tokens
+    const charCounts = await Promise.all(data.sources.map(fetchSourceChars));
+    const raw_tokens = Math.ceil(charCounts.reduce((sum, c) => sum + c, 0) / 4);
+
+    if (raw_tokens > 0) {
+      await supabase
+        .from("research")
+        .update({ raw_tokens })
+        .eq("id", result.id);
+    }
   } catch (err) {
     console.error("Async contribution processing error:", err);
   }
@@ -71,15 +103,15 @@ search_surface MUST use this format:
       sources: z.union([z.array(z.string()), z.string()]).optional().describe("Public URLs actually fetched during research. MUST start with https:// or http:// — file paths, library identifiers, or descriptions are rejected. If you used a docs MCP like context7, use the public URL of the doc page, not the library ID. Required for new contributions."),
       tags: z.union([z.array(z.string()), z.string()]).optional().describe("Lowercase tags: technologies, concepts. Required for new contributions."),
       gaps: z.union([z.array(z.string()), z.string()]).optional().describe("Unexplored angles for future investigators. Required for new contributions."),
-      raw_tokens: z.union([z.number(), z.string()]).optional().describe("Total tokens consumed from ALL external sources during research. Do NOT estimate or guess — add up the actual character counts of every web page, doc fetch, and context7 result you received, then divide by 4. Required for new contributions."),
-      response_tokens: z.union([z.number(), z.string()]).optional().describe("Approx token count of the content field you're saving. Required for new contributions."),
+      raw_tokens: z.union([z.number(), z.string()]).optional().describe("Deprecated — computed server-side. Ignored if provided."),
+      response_tokens: z.union([z.number(), z.string()]).optional().describe("Deprecated — computed server-side. Ignored if provided."),
       replaces_id: z.string().optional().describe("ID of entry this updates/replaces. Only if same topic with newer info."),
       started_from_ids: z.union([z.array(z.string()), z.string()]).optional().describe("IDs of research entries this was built from. Pass the IDs from the search results."),
       volatility: z.enum(["timeless", "stable", "evolving", "volatile"]).optional().describe("How quickly this knowledge changes. timeless=established facts, stable=mature frameworks, evolving=active libraries, volatile=betas/pre-releases. Default: stable"),
       verify_id: z.string().optional().describe("ID of an existing research entry to mark as still accurate. Updates its freshness clock instead of creating a new entry. Use after a 'check' freshness result when you confirmed the info is still valid."),
       client_stats: z.union([z.string(), z.record(z.string(), z.any())]).optional().describe("JSON object/string from the local helper with current 5h window stats. Pass exactly as shown in your hook instructions."),
     },
-    async ({ search_surface, content, sources: rawSources, tags: rawTags, gaps: rawGaps, raw_tokens: rawRawTokens, response_tokens: rawResponseTokens, replaces_id, started_from_ids: rawStartedFrom, volatility, verify_id }) => {
+    async ({ search_surface, content, sources: rawSources, tags: rawTags, gaps: rawGaps, replaces_id, started_from_ids: rawStartedFrom, volatility, verify_id }) => {
       // Parameter coercion — LLMs send arrays as JSON strings or comma-separated strings
       function coerceStringArray(raw: string | string[]): string[] {
         if (Array.isArray(raw)) return raw.map(s => s.replace(/^["'\[\]]+|["'\[\]]+$/g, '').trim()).filter(Boolean);
@@ -92,8 +124,6 @@ search_surface MUST use this format:
       const sources = rawSources ? coerceStringArray(rawSources) : [];
       const tags = rawTags ? coerceStringArray(rawTags) : [];
       const gaps = rawGaps ? coerceStringArray(rawGaps) : [];
-      const raw_tokens = Number(rawRawTokens) || 0;
-      const response_tokens = Number(rawResponseTokens) || 0;
       const started_from_ids: string[] = rawStartedFrom
         ? (typeof rawStartedFrom === "string"
           ? (rawStartedFrom.startsWith("[") ? JSON.parse(rawStartedFrom) : [rawStartedFrom])
@@ -123,12 +153,12 @@ search_surface MUST use this format:
         }
 
         // Quality gate: reject contributions without real research
-        if (raw_tokens === 0 || sources.length === 0) {
+        if (sources.length === 0) {
           return {
             content: [
               {
                 type: "text" as const,
-                text: "Rejected: contributions require real research (raw_tokens > 0, sources non-empty).",
+                text: "Rejected: contributions require at least one public source URL.",
               },
             ],
           };
@@ -170,7 +200,7 @@ search_surface MUST use this format:
         // Fire off heavy work async — non-blocking
         processContributionAsync(userId, {
           search_surface, content, sources, tags, gaps,
-          raw_tokens, response_tokens, replaces_id, started_from_ids,
+          replaces_id, started_from_ids,
           volatility: volatility ?? "stable",
         });
 
