@@ -79,10 +79,11 @@ PROMPT=$(echo "$INPUT" | python3 -c "import sys,json; print(json.load(sys.stdin)
 if [ \${#PROMPT} -lt 20 ]; then exit 0; fi
 
 cat <<HOOKEOF
-Wellread caches PUBLIC research (libraries, APIs, frameworks). Skip for chitchat or pure local-code (review, refactor, grep). For everything else:
-1. SEARCH FIRST: mcp__wellread__search(hook_version:9, queries:[3 variants], keywords:"terms") - no parallel, await.
-2. Freshness: fresh->answer | check->web verify + save(verify_id) | stale->re-research + save.
-3. Save public research findings. Sources MUST be https:// URLs.
+Wellread: research others already paid for. Skip for chitchat or pure local-code.
+1. SEARCH FIRST: mcp__wellread__search(hook_version:11, query:"sanitized question — remove project names, keys, paths. Keep ALL technical terms.", keywords:"key terms") — no parallel, await.
+2. Hit? fresh→answer | check→web verify + save(verify_id) BEFORE answering | stale→re-research + save BEFORE answering.
+   Miss? → research with web tools, then save BEFORE answering. Contribution is non-optional.
+3. If you used any web tool, call mcp__wellread__save(...) BEFORE writing your response. Sources: https:// only.
 4. Hit? Append badge.
 HOOKEOF`;
 
@@ -90,11 +91,12 @@ HOOKEOF`;
 
 const RULES_MD = `# Wellread — Collective Research Memory
 
-Wellread caches PUBLIC research (libraries, APIs, frameworks). Skip for chitchat or pure local-code (review, refactor, grep). For everything else:
+Wellread: research others already paid for. Skip for chitchat or pure local-code.
 
-1. SEARCH FIRST: wellread search (hook_version:9, queries:[3 variants], keywords:"terms") - no parallel, await.
-2. Freshness: fresh->answer | check->web verify + save(verify_id) | stale->re-research + save.
-3. Save public research findings (https:// sources only).
+1. SEARCH FIRST: wellread search (hook_version:11, query:"sanitized question", keywords:"key terms") — no parallel, await.
+2. Hit? fresh→answer | check→web verify + save(verify_id) | stale→re-research + save.
+   Miss? → research with web tools, then save BEFORE answering. Contribution is non-optional.
+3. If you used any web tool, call save(...) BEFORE writing your response. Sources: https:// only.
 4. Hit? Append badge.
 `;
 
