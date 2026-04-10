@@ -33,6 +33,9 @@ async function fetchSourceChars(url: string): Promise<number> {
   }
 }
 
+// Estimate tokens per tool call type (for calls we can't fetch)
+const WEBSEARCH_TOKENS = 3000; // typical search result snippets
+
 async function processContributionAsync(
   userId: string,
   data: {
@@ -44,6 +47,7 @@ async function processContributionAsync(
     replaces_id?: string;
     started_from_ids?: string[];
     volatility?: string;
+    tool_calls?: string[];
   }
 ): Promise<void> {
   try {
@@ -58,18 +62,60 @@ async function processContributionAsync(
       sources: data.sources,
       search_surface: data.search_surface,
       tags: data.tags,
-      raw_tokens: 0, // placeholder — updated below after fetching sources
+      raw_tokens: 0, // placeholder — updated below after measuring
       response_tokens,
       embedding,
       replaces_id: data.replaces_id,
       started_from_ids: data.started_from_ids,
       volatility: data.volatility,
+      tool_calls: data.tool_calls,
     });
     incrementUserContributions(userId, 0, response_tokens);
 
-    // Fetch sources in parallel and compute actual raw_tokens
-    const charCounts = await Promise.all(data.sources.map(fetchSourceChars));
-    const raw_tokens = Math.ceil(charCounts.reduce((sum, c) => sum + c, 0) / 4);
+    // Build ordered list of token sizes per turn from tool_calls
+    // For WebFetch/context7 URLs: fetch and measure actual size
+    // For WebSearch: use flat estimate
+    // For unknown: skip (conservative)
+    const turnSizes: number[] = [];
+
+    if (data.tool_calls && data.tool_calls.length > 0) {
+      for (const call of data.tool_calls) {
+        const lower = call.toLowerCase();
+        if (lower.startsWith("websearch") || lower.startsWith("web_search") || lower.startsWith("web search")) {
+          turnSizes.push(WEBSEARCH_TOKENS);
+        } else if (lower.startsWith("webfetch") || lower.startsWith("web_fetch") || lower.startsWith("web fetch") || lower.startsWith("fetch")) {
+          // Extract URL from the call string
+          const urlMatch = call.match(/https?:\/\/[^\s,'"]+/);
+          if (urlMatch) {
+            const chars = await fetchSourceChars(urlMatch[0]);
+            turnSizes.push(Math.ceil(chars / 4));
+          }
+        } else if (lower.startsWith("context7") || lower.startsWith("mcp")) {
+          // Context7 or other MCP — try to extract URL, fallback to estimate
+          const urlMatch = call.match(/https?:\/\/[^\s,'"]+/);
+          if (urlMatch) {
+            const chars = await fetchSourceChars(urlMatch[0]);
+            turnSizes.push(Math.ceil(chars / 4));
+          } else {
+            turnSizes.push(5000); // typical context7 response
+          }
+        }
+      }
+    } else {
+      // No tool_calls provided — fallback to fetching sources (no compound calculation)
+      const charCounts = await Promise.all(data.sources.map(fetchSourceChars));
+      for (const chars of charCounts) {
+        turnSizes.push(Math.ceil(chars / 4));
+      }
+    }
+
+    // Calculate compound token cost (each turn re-sends all previous content)
+    let accumulated = 0;
+    let raw_tokens = 0;
+    for (const size of turnSizes) {
+      raw_tokens += accumulated + size;
+      accumulated += size;
+    }
 
     if (raw_tokens > 0) {
       await supabase
@@ -105,13 +151,14 @@ search_surface MUST use this format:
       gaps: z.union([z.array(z.string()), z.string()]).optional().describe("Unexplored angles for future investigators. Required for new contributions."),
       raw_tokens: z.union([z.number(), z.string()]).optional().describe("Deprecated — computed server-side. Ignored if provided."),
       response_tokens: z.union([z.number(), z.string()]).optional().describe("Deprecated — computed server-side. Ignored if provided."),
+      tool_calls: z.union([z.array(z.string()), z.string()]).optional().describe("List every tool call you made to gather this research, in order. Format: 'ToolName: query or URL'. Example: ['WebSearch: Next.js auth setup', 'WebFetch: https://nextjs.org/docs/auth', 'context7: /vercel/next.js how to set up auth']. Include ALL calls, even failed ones."),
       replaces_id: z.string().optional().describe("ID of entry this updates/replaces. Only if same topic with newer info."),
       started_from_ids: z.union([z.array(z.string()), z.string()]).optional().describe("IDs of research entries this was built from. Pass the IDs from the search results."),
       volatility: z.enum(["timeless", "stable", "evolving", "volatile"]).optional().describe("How quickly this knowledge changes. timeless=established facts, stable=mature frameworks, evolving=active libraries, volatile=betas/pre-releases. Default: stable"),
       verify_id: z.string().optional().describe("ID of an existing research entry to mark as still accurate. Updates its freshness clock instead of creating a new entry. Use after a 'check' freshness result when you confirmed the info is still valid."),
       client_stats: z.union([z.string(), z.record(z.string(), z.any())]).optional().describe("JSON object/string from the local helper with current 5h window stats. Pass exactly as shown in your hook instructions."),
     },
-    async ({ search_surface, content, sources: rawSources, tags: rawTags, gaps: rawGaps, replaces_id, started_from_ids: rawStartedFrom, volatility, verify_id }) => {
+    async ({ search_surface, content, sources: rawSources, tags: rawTags, gaps: rawGaps, replaces_id, started_from_ids: rawStartedFrom, volatility, verify_id, tool_calls: rawToolCalls }) => {
       // Parameter coercion — LLMs send arrays as JSON strings or comma-separated strings
       function coerceStringArray(raw: string | string[]): string[] {
         if (Array.isArray(raw)) return raw.map(s => s.replace(/^["'\[\]]+|["'\[\]]+$/g, '').trim()).filter(Boolean);
@@ -124,6 +171,7 @@ search_surface MUST use this format:
       const sources = rawSources ? coerceStringArray(rawSources) : [];
       const tags = rawTags ? coerceStringArray(rawTags) : [];
       const gaps = rawGaps ? coerceStringArray(rawGaps) : [];
+      const tool_calls = rawToolCalls ? coerceStringArray(rawToolCalls) : [];
       const started_from_ids: string[] = rawStartedFrom
         ? (typeof rawStartedFrom === "string"
           ? (rawStartedFrom.startsWith("[") ? JSON.parse(rawStartedFrom) : [rawStartedFrom])
@@ -204,6 +252,7 @@ search_surface MUST use this format:
           search_surface: effectiveSearchSurface, content, sources, tags, gaps,
           replaces_id, started_from_ids,
           volatility: volatility ?? "stable",
+          tool_calls,
         });
 
         // Read the user's current contribution count to compute the badge milestone number.

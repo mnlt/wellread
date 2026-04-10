@@ -35,6 +35,7 @@ export interface ResearchEntry {
   replaces_id?: string;
   started_from_ids?: string[];
   volatility?: string;
+  tool_calls?: string[];
 }
 
 export interface SearchResult {
@@ -296,6 +297,7 @@ export async function insertResearch(entry: ResearchEntry): Promise<InsertResult
       replaces_id: entry.replaces_id ?? null,
       started_from_ids: entry.started_from_ids ?? [],
       volatility: entry.volatility ?? "stable",
+      tool_calls: entry.tool_calls ?? [],
       version,
       is_current: true,
     })
