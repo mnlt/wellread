@@ -72,7 +72,7 @@ function formatSources(sources: string[], maxShown: number = 3): string {
 // ── wellread ──
 //
 // ✓ @lucid-falcon-9093 already researched that
-//   ↳ used by 12 others
+//   ↳ used 12 times
 //   ↳ stable content · verified 3d ago
 //   ↳ sources: [docs.stripe.com, github.com, +3]
 // ⭐ you skipped 5.4K tokens
@@ -110,7 +110,7 @@ export function buildHitBadge(data: HitBadgeData): string {
     authorLine = `✓ someone already researched that ${researchedAge}`;
   }
 
-  const usedByLine = reused > 0 ? `  ↳ used by ${reused} others` : "";
+  const usedByLine = reused > 0 ? `  ↳ used ${reused} times` : "";
   const skippedLine = skipped > 0 ? `⭐ you skipped ${formatTokensDecimal(skipped)} tokens` : "";
 
   const lines = [
@@ -131,7 +131,7 @@ export function buildHitBadge(data: HitBadgeData): string {
 // ── wellread ──
 //
 // ✓ @vast-narwhal-2567 already looked into this
-//   ↳ used by 4 others
+//   ↳ used 4 times
 //   ↳ volatile content · verified 1d ago
 // ⭐ you skipped 3.2K tokens
 //
