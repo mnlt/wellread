@@ -34,7 +34,7 @@ async function fetchSourceChars(url: string): Promise<number> {
 }
 
 // Estimate tokens per tool call type (for calls we can't fetch)
-const WEBSEARCH_TOKENS = 3000; // typical search result snippets
+const WEBSEARCH_TOKENS = 6000; // based on Anthropic docs example: simple query = 6,039 input tokens
 
 async function processContributionAsync(
   userId: string,
