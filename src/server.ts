@@ -38,8 +38,15 @@ function createServer(userId: string, sessionId: string): McpServer {
     version: VERSION,
   });
 
-  registerSearchTool(server, userId, sessionId);
-  registerContributeTool(server, userId);
+  // Shared session context — search populates, contribute reads
+  const sessionContext = {
+    agent: null as string | null,
+    matchedIds: [] as string[],
+    lastQuery: null as string | null,
+  };
+
+  registerSearchTool(server, userId, sessionId, sessionContext);
+  registerContributeTool(server, userId, sessionContext);
   registerStatsTool(server, userId);
 
   return server;

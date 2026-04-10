@@ -38,6 +38,7 @@ const WEBSEARCH_TOKENS = 6000; // based on Anthropic docs example: simple query 
 
 async function processContributionAsync(
   userId: string,
+  agent: string | null,
   data: {
     search_surface: string;
     content: string;
@@ -109,12 +110,18 @@ async function processContributionAsync(
       }
     }
 
-    // Calculate compound token cost (each turn re-sends all previous content)
+    // Claude Code: compound (each turn re-sends all prior context)
+    // Other agents: simple sum (they truncate/retrieve, not replay)
+    const isClaudeCode = !agent || agent.toLowerCase().includes("claude");
     let accumulated = 0;
     let raw_tokens = 0;
-    for (const size of turnSizes) {
-      raw_tokens += accumulated + size;
-      accumulated += size;
+    if (isClaudeCode) {
+      for (const size of turnSizes) {
+        raw_tokens += accumulated + size;
+        accumulated += size;
+      }
+    } else {
+      raw_tokens = turnSizes.reduce((sum, s) => sum + s, 0);
     }
 
     if (raw_tokens > 0) {
@@ -128,7 +135,9 @@ async function processContributionAsync(
   }
 }
 
-export function registerContributeTool(server: McpServer, userId: string) {
+import type { SessionContext } from "./search.js";
+
+export function registerContributeTool(server: McpServer, userId: string, sessionContext: SessionContext) {
   server.tool(
     "save",
     `Save research to collective memory. Call directly BEFORE responding to the user, after any live research (web search, URL fetch, context7).
@@ -149,16 +158,12 @@ search_surface MUST use this format:
       sources: z.union([z.array(z.string()), z.string()]).optional().describe("ALL public URLs fetched during research — do not omit any. MUST start with https:// or http://. Include every web page, doc fetch, and context7 result URL. Required for new contributions."),
       tags: z.union([z.array(z.string()), z.string()]).optional().describe("Lowercase tags: technologies, concepts. Required for new contributions."),
       gaps: z.union([z.array(z.string()), z.string()]).optional().describe("Unexplored angles for future investigators. Required for new contributions."),
-      raw_tokens: z.union([z.number(), z.string()]).optional().describe("Deprecated — computed server-side. Ignored if provided."),
-      response_tokens: z.union([z.number(), z.string()]).optional().describe("Deprecated — computed server-side. Ignored if provided."),
       tool_calls: z.union([z.array(z.string()), z.string()]).optional().describe("List every tool call you made to gather this research, in order. Format: 'ToolName: query or URL'. Example: ['WebSearch: Next.js auth setup', 'WebFetch: https://nextjs.org/docs/auth', 'context7: /vercel/next.js how to set up auth']. Include ALL calls, even failed ones."),
       replaces_id: z.string().optional().describe("ID of entry this updates/replaces. Only if same topic with newer info."),
-      started_from_ids: z.union([z.array(z.string()), z.string()]).optional().describe("IDs of research entries this was built from. Pass the IDs from the search results."),
       volatility: z.enum(["timeless", "stable", "evolving", "volatile"]).optional().describe("How quickly this knowledge changes. timeless=established facts, stable=mature frameworks, evolving=active libraries, volatile=betas/pre-releases. Default: stable"),
       verify_id: z.string().optional().describe("ID of an existing research entry to mark as still accurate. Updates its freshness clock instead of creating a new entry. Use after a 'check' freshness result when you confirmed the info is still valid."),
-      client_stats: z.union([z.string(), z.record(z.string(), z.any())]).optional().describe("JSON object/string from the local helper with current 5h window stats. Pass exactly as shown in your hook instructions."),
     },
-    async ({ search_surface, content, sources: rawSources, tags: rawTags, gaps: rawGaps, replaces_id, started_from_ids: rawStartedFrom, volatility, verify_id, tool_calls: rawToolCalls }) => {
+    async ({ search_surface, content, sources: rawSources, tags: rawTags, gaps: rawGaps, replaces_id, volatility, verify_id, tool_calls: rawToolCalls }) => {
       // Parameter coercion — LLMs send arrays as JSON strings or comma-separated strings
       function coerceStringArray(raw: string | string[]): string[] {
         if (Array.isArray(raw)) return raw.map(s => s.replace(/^["'\[\]]+|["'\[\]]+$/g, '').trim()).filter(Boolean);
@@ -172,10 +177,9 @@ search_surface MUST use this format:
       const tags = rawTags ? coerceStringArray(rawTags) : [];
       const gaps = rawGaps ? coerceStringArray(rawGaps) : [];
       const tool_calls = rawToolCalls ? coerceStringArray(rawToolCalls) : [];
-      const started_from_ids: string[] = rawStartedFrom
-        ? (typeof rawStartedFrom === "string"
-          ? (rawStartedFrom.startsWith("[") ? JSON.parse(rawStartedFrom) : [rawStartedFrom])
-          : rawStartedFrom)
+      // Use session context for started_from_ids (from search) instead of agent param
+      const started_from_ids = sessionContext.matchedIds.length > 0
+        ? sessionContext.matchedIds
         : [];
 
 
@@ -200,7 +204,7 @@ search_surface MUST use this format:
           };
         }
         // If search_surface is missing, derive it from the first ~500 chars of content
-        const effectiveSearchSurface = search_surface || content.slice(0, 500);
+        const effectiveSearchSurface = search_surface || sessionContext.lastQuery || content.slice(0, 500);
 
         // Quality gate: reject contributions without real research
         if (sources.length === 0) {
@@ -248,7 +252,7 @@ search_surface MUST use this format:
         }
 
         // Fire off heavy work async — non-blocking
-        processContributionAsync(userId, {
+        processContributionAsync(userId, sessionContext.agent, {
           search_surface: effectiveSearchSurface, content, sources, tags, gaps,
           replaces_id, started_from_ids,
           volatility: volatility ?? "stable",
