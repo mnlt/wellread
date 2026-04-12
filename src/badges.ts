@@ -84,6 +84,7 @@ export interface HitBadgeData {
   totalResponseTokens: number;
   topVolatility: string | undefined;
   topAgeDays: number;
+  createdAgeDays?: number;
   topSources: string[];
   otherDevsCount: number;
   topMatchCount: number;
@@ -100,7 +101,7 @@ export function buildHitBadge(data: HitBadgeData): string {
   // Author line: check self first, then @name, then fallback "someone".
   // Includes "Xd ago" to show when the research was originally done.
   const others = safeInt(data.otherDevsCount);
-  const researchedAge = formatAge(data.topAgeDays);
+  const researchedAge = formatAge(data.createdAgeDays ?? data.topAgeDays);
   let authorLine: string;
   if (others === 0) {
     authorLine = `✓ you already researched that ${researchedAge}`;

@@ -171,6 +171,9 @@ export function registerSearchTool(server: McpServer, userId: string, sessionId:
           // skipped, and the top source hostnames (anti-hallucination signal).
           const top = results[0];
           const topAgeDays = freshnessResults[0].age_days;
+          const createdAgeDays = top.created_at
+            ? Math.floor((Date.now() - new Date(top.created_at).getTime()) / 86400000)
+            : topAgeDays;
 
           // Count distinct contributors AND total reuse count for the matched
           // entries. Single query, both signals. The contributor count drives
@@ -216,6 +219,7 @@ export function registerSearchTool(server: McpServer, userId: string, sessionId:
               totalResponseTokens,
               topVolatility: top.volatility,
               topAgeDays,
+              createdAgeDays,
               topSources: top.sources ?? [],
               otherDevsCount,
               topMatchCount,
