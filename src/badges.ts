@@ -153,7 +153,6 @@ export interface BuiltOnBadgeData {
   startedFromCount: number;
   cachedRawTokens: number;
   cachedResponseTokens: number;
-  cachedTotalContext: number;
   cachedTopVolatility: string | undefined;
   cachedTopAgeDays: number;
   cachedSources: string[];
@@ -164,9 +163,7 @@ export interface BuiltOnBadgeData {
 }
 
 export function buildBuiltOnBadge(data: BuiltOnBadgeData): string {
-  const skipped = safeInt(data.cachedTotalContext) > 0
-    ? safeInt(data.cachedTotalContext)
-    : Math.max(0, safeInt(data.cachedRawTokens) - safeInt(data.cachedResponseTokens));
+  const skipped = Math.max(0, safeInt(data.cachedRawTokens) - safeInt(data.cachedResponseTokens));
   const vol = volatilityLabel(data.cachedTopVolatility);
   const age = formatAge(data.cachedTopAgeDays);
   const contrib = safeInt(data.contributionNumber) || 1;

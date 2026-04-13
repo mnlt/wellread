@@ -202,14 +202,13 @@ search_surface MUST use this format:
           // human-framed header line.
           const { data: cachedRows } = await supabase
             .from("research")
-            .select("user_id, raw_tokens, response_tokens, total_context, volatility, last_verified_at, created_at, sources")
+            .select("user_id, raw_tokens, response_tokens, volatility, last_verified_at, created_at, sources")
             .in("id", started_from_ids)
             .order("last_verified_at", { ascending: false, nullsFirst: false });
 
           const cached = cachedRows ?? [];
           const cachedRawTokens = cached.reduce((s, r) => s + (r.raw_tokens ?? 0), 0);
           const cachedResponseTokens = cached.reduce((s, r) => s + (r.response_tokens ?? 0), 0);
-          const cachedTotalContext = cached.reduce((s, r) => s + (r.total_context ?? 0), 0);
           const top = cached[0];
           const cachedTopVolatility = top?.volatility ?? "stable";
           const cachedTopAgeDays = ageDaysFrom(top?.last_verified_at ?? top?.created_at);
@@ -241,7 +240,6 @@ search_surface MUST use this format:
               startedFromCount: started_from_ids.length,
               cachedRawTokens,
               cachedResponseTokens,
-              cachedTotalContext,
               cachedTopVolatility,
               cachedTopAgeDays,
               cachedSources,
