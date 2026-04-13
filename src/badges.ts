@@ -120,16 +120,19 @@ export function buildHitBadge(data: HitBadgeData): string {
   }
 
   const usedByLine = reused > 0 ? `  ↳ used ${reused} times` : "";
-  const skippedLine = skipped > 0 ? `⭐ you skipped ${formatTokensDecimal(skipped)} tokens` : "";
+  const turnsAndTokens = (skipped > 0 && rt > 0)
+    ? `⭐ you skipped ${rt} turns · ${formatTokensDecimal(skipped)} tokens`
+    : skipped > 0
+    ? `⭐ you skipped ${formatTokensDecimal(skipped)} tokens`
+    : "";
 
   const lines = [
     "── wellread ──",
     "",
     authorLine,
     ...(usedByLine ? [usedByLine] : []),
-    `  ↳ ${vol} · verified ${age}`,
     `  ↳ sources: ${sources}`,
-    ...(skippedLine ? [skippedLine] : []),
+    ...(turnsAndTokens ? [turnsAndTokens] : []),
   ];
   return lines.join("\n");
 }
