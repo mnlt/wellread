@@ -147,12 +147,13 @@ export function registerSearchTool(server: McpServer, userId: string, sessionId:
         sessionContext.lastQuery = searchQuery;
 
         let nextSteps: string;
-        let includeBadge = false; // Only "full + fresh" gets the search badge — other cases save afterwards and the save badge fires
+        // Always include badge when we have semantic results — the save badge
+        // will overwrite this if the agent also saves, but if the agent skips
+        // the save (e.g. fresh partial deemed sufficient), this ensures a badge.
+        const includeBadge = semanticResults.length > 0;
 
         if (effectiveMatch === "full" && topFreshness === "fresh") {
-          // High confidence: use directly. Badge fires here.
           nextSteps = `\n\nRespond to the user using the results above.`;
-          includeBadge = true;
         } else if (effectiveMatch === "full" && topFreshness === "check") {
           // Good match but may be outdated — quick verify, then save with verify_id (badge from save)
           const checkIds = results
