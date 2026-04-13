@@ -125,24 +125,16 @@ export function registerSearchTool(server: McpServer, userId: string, sessionId:
         // Freshness can downgrade a full match to partial, but never upgrade
         const effectiveMatch = (similarityMatch === "full" && topFreshness === "stale") ? "partial" : similarityMatch;
 
-        // Only count tokens from results with real semantic similarity (>0).
-        // BM25-only matches (sim=0) inflate the "skipped tokens" number dishonestly.
-        const semanticResults = results.filter((r) => r.similarity > 0);
-        const totalRawTokens = semanticResults.reduce((sum, r) => sum + r.raw_tokens, 0);
-        const totalResponseTokens = semanticResults.reduce((sum, r) => sum + r.response_tokens, 0);
-        const totalContext = semanticResults.reduce((sum, r) => sum + (r.total_context ?? 0), 0);
-        const totalResearchTurns = semanticResults.reduce((sum, r) => sum + (r.research_turns ?? 0), 0);
+        // Savings based on top result only — consistent with badge
+        const top = results[0];
+        const topRaw = top.raw_tokens ?? 0;
+        const topResp = top.response_tokens ?? 0;
+        const topTurns = top.research_turns ?? 0;
 
-        // Personalized savings: total_context (incremental) + baseline × research_turns (re-send cost)
-        // Falls back to total_context alone if no baseline, then to raw estimate for old entries
-        let tokensSavedForUser: number;
-        if (totalContext > 0 && userBaseline > 0 && totalResearchTurns > 0) {
-          tokensSavedForUser = totalContext + (userBaseline * totalResearchTurns) - totalResponseTokens;
-        } else if (totalContext > 0) {
-          tokensSavedForUser = totalContext - totalResponseTokens;
-        } else {
-          tokensSavedForUser = Math.max(0, totalRawTokens - totalResponseTokens);
-        }
+        // Personalized savings: raw_tokens + baseline × research_turns - response_tokens
+        const tokensSavedForUser = (userBaseline > 0 && topTurns > 0)
+          ? topRaw + (userBaseline * topTurns) - topResp
+          : Math.max(0, topRaw - topResp);
         incrementUserSearch(userId, effectiveMatch, tokensSavedForUser);
 
         // Log the search with the personalized tokens_saved
@@ -167,9 +159,8 @@ export function registerSearchTool(server: McpServer, userId: string, sessionId:
         sessionContext.lastQuery = searchQuery;
 
         let nextSteps: string;
-        // Always include badge when we have semantic results — the save badge
-        // will overwrite this if the agent also saves, but if the agent skips
-        // the save (e.g. fresh partial deemed sufficient), this ensures a badge.
+        const semanticResults = results.filter((r) => r.similarity > 0);
+        // Always include badge when we have semantic results
         const includeBadge = semanticResults.length > 0;
 
         if (effectiveMatch === "full" && topFreshness === "fresh") {
@@ -194,7 +185,6 @@ export function registerSearchTool(server: McpServer, userId: string, sessionId:
           // format communicates: number of OTHER devs who researched this,
           // volatility + verified-age (anti-training-data signal), tokens
           // skipped, and the top source hostnames (anti-hallucination signal).
-          const top = results[0];
           const topAgeDays = freshnessResults[0].age_days;
           const createdAgeDays = top.created_at
             ? Math.floor((Date.now() - new Date(top.created_at).getTime()) / 86400000)
@@ -239,11 +229,9 @@ export function registerSearchTool(server: McpServer, userId: string, sessionId:
 
           const badge = buildHitBadge(
             {
-              resultsCount: results.length,
-              totalRawTokens,
-              totalResponseTokens,
-              totalContext,
-              totalResearchTurns,
+              topRawTokens: topRaw,
+              topResponseTokens: topResp,
+              topResearchTurns: topTurns,
               userBaseline,
               topVolatility: top.volatility,
               topAgeDays,

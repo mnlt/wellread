@@ -78,11 +78,9 @@ function formatSources(sources: string[], maxShown: number = 3): string {
 // ─────────────────────────────────────────────────────────────────
 
 export interface HitBadgeData {
-  resultsCount: number;
-  totalRawTokens: number;
-  totalResponseTokens: number;
-  totalContext: number;
-  totalResearchTurns: number;
+  topRawTokens: number;
+  topResponseTokens: number;
+  topResearchTurns: number;
   userBaseline: number;
   topVolatility: string | undefined;
   topAgeDays: number;
@@ -94,20 +92,15 @@ export interface HitBadgeData {
 }
 
 export function buildHitBadge(data: HitBadgeData): string {
-  // Personalized savings: total_context + (baseline × research_turns) - response_tokens
-  // Falls back gracefully when data is missing
-  const tc = safeInt(data.totalContext);
+  // Personalized savings from top result only:
+  // raw_tokens (incremental research cost) + baseline × research_turns (context replay) - response_tokens
+  const raw = safeInt(data.topRawTokens);
+  const resp = safeInt(data.topResponseTokens);
   const bl = safeInt(data.userBaseline);
-  const rt = safeInt(data.totalResearchTurns);
-  const resp = safeInt(data.totalResponseTokens);
-  let skipped: number;
-  if (tc > 0 && bl > 0 && rt > 0) {
-    skipped = tc + (bl * rt) - resp;
-  } else if (tc > 0) {
-    skipped = tc - resp;
-  } else {
-    skipped = Math.max(0, safeInt(data.totalRawTokens) - resp);
-  }
+  const rt = safeInt(data.topResearchTurns);
+  const skipped = (bl > 0 && rt > 0)
+    ? raw + (bl * rt) - resp
+    : Math.max(0, raw - resp);
   const vol = volatilityLabel(data.topVolatility);
   const age = formatAge(data.topAgeDays);
   const sources = formatSources(data.topSources);
