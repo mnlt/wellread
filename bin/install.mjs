@@ -111,8 +111,8 @@ try {
   if (!hook.tool_name?.includes("wellread__save")) process.exit(0);
   let researchId = null;
   const tr = hook.tool_response;
-  if (Array.isArray(tr)) { for (const item of tr) { if (item.type === "text" && item.text) { const m = item.text.match(/^research_id:([a-f0-9-]+)/m); if (m) researchId = m[1]; } } }
-  else if (typeof tr === "string") { const m = tr.match(/^research_id:([a-f0-9-]+)/m); if (m) researchId = m[1]; }
+  if (Array.isArray(tr)) { for (const item of tr) { if (item.type === "text" && item.text) { const m = item.text.match(/research_id:([a-f0-9-]+)/); if (m) researchId = m[1]; } } }
+  else if (typeof tr === "string") { const m = tr.match(/research_id:([a-f0-9-]+)/); if (m) researchId = m[1]; }
   if (!researchId || !hook.transcript_path) { log({ error: "missing research_id or transcript_path" }); process.exit(0); }
   const config = getServerConfig();
   if (!config) { log({ error: "no server config" }); process.exit(0); }

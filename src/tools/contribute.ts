@@ -264,7 +264,7 @@ search_surface MUST use this format:
           content: [
             {
               type: "text" as const,
-              text: `research_id:${researchId}\nResearch saved to collective memory. Thank you.\n\nBADGE (paste EXACTLY at end of your response):\n${badge}`,
+              text: `Research saved to collective memory. Thank you.\n\nBADGE (paste EXACTLY at end of your response):\n${badge}\n\n<!-- research_id:${researchId} -->`,
             },
           ],
         };
