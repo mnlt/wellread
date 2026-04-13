@@ -13,126 +13,22 @@ function ageDaysFrom(isoTimestamp: string | null | undefined): number {
   return Math.floor(ms / 86400000);
 }
 
-// Fetch a URL and return its text content length in chars.
-// Returns 0 on any failure — never blocks the save pipeline.
-async function fetchSourceChars(url: string): Promise<number> {
-  try {
-    const controller = new AbortController();
-    const timeout = setTimeout(() => controller.abort(), 10000);
-    const res = await fetch(url, {
-      signal: controller.signal,
-      headers: { "User-Agent": "wellread-mcp/token-counter" },
-    });
-    clearTimeout(timeout);
-    if (!res.ok) return 0;
-    const text = await res.text();
-    // Strip HTML tags to approximate the text content the agent saw
-    return text.replace(/<[^>]*>/g, "").replace(/\s+/g, " ").trim().length;
-  } catch {
-    return 0;
+// Flat token estimates per tool call type.
+// Conservative — these are fallback for non-Claude-Code clients.
+// Claude Code users get exact measurement via PostToolUse hook on the JSONL.
+const TOKEN_ESTIMATES: Record<string, number> = {
+  websearch: 3000,
+  webfetch: 3000,
+  context7: 5000,
+  mcp: 5000,
+};
+
+function estimateToolTokens(call: string): number {
+  const lower = call.toLowerCase();
+  for (const [prefix, tokens] of Object.entries(TOKEN_ESTIMATES)) {
+    if (lower.startsWith(prefix) || lower.includes(prefix)) return tokens;
   }
-}
-
-// Estimate tokens per tool call type (for calls we can't fetch)
-const WEBSEARCH_TOKENS = 6000; // based on Anthropic docs example: simple query = 6,039 input tokens
-
-async function processContributionAsync(
-  userId: string,
-  agent: string | null,
-  data: {
-    search_surface: string;
-    content: string;
-    sources: string[];
-    tags: string[];
-    gaps: string[];
-    replaces_id?: string;
-    started_from_ids?: string[];
-    volatility?: string;
-    tool_calls?: string[];
-  }
-): Promise<void> {
-  try {
-    // Compute response_tokens from actual content length (exact, not agent-estimated)
-    const response_tokens = Math.ceil(data.content.length / 4);
-
-    const embedding = await generateEmbedding(data.search_surface);
-    const result = await insertResearch({
-      user_id: userId,
-      content: data.content,
-      gaps: data.gaps,
-      sources: data.sources,
-      search_surface: data.search_surface,
-      tags: data.tags,
-      raw_tokens: 0, // placeholder — updated below after measuring
-      response_tokens,
-      embedding,
-      replaces_id: data.replaces_id,
-      started_from_ids: data.started_from_ids,
-      volatility: data.volatility,
-      tool_calls: data.tool_calls,
-    });
-    incrementUserContributions(userId, 0, response_tokens);
-
-    // Build ordered list of token sizes per turn from tool_calls
-    // For WebFetch/context7 URLs: fetch and measure actual size
-    // For WebSearch: use flat estimate
-    // For unknown: skip (conservative)
-    const turnSizes: number[] = [];
-
-    if (data.tool_calls && data.tool_calls.length > 0) {
-      for (const call of data.tool_calls) {
-        const lower = call.toLowerCase();
-        if (lower.startsWith("websearch") || lower.startsWith("web_search") || lower.startsWith("web search")) {
-          turnSizes.push(WEBSEARCH_TOKENS);
-        } else if (lower.startsWith("webfetch") || lower.startsWith("web_fetch") || lower.startsWith("web fetch") || lower.startsWith("fetch")) {
-          // Extract URL from the call string
-          const urlMatch = call.match(/https?:\/\/[^\s,'"]+/);
-          if (urlMatch) {
-            const chars = await fetchSourceChars(urlMatch[0]);
-            turnSizes.push(Math.ceil(chars / 4));
-          }
-        } else if (lower.startsWith("context7") || lower.startsWith("mcp")) {
-          // Context7 or other MCP — try to extract URL, fallback to estimate
-          const urlMatch = call.match(/https?:\/\/[^\s,'"]+/);
-          if (urlMatch) {
-            const chars = await fetchSourceChars(urlMatch[0]);
-            turnSizes.push(Math.ceil(chars / 4));
-          } else {
-            turnSizes.push(5000); // typical context7 response
-          }
-        }
-      }
-    } else {
-      // No tool_calls provided — fallback to fetching sources (no compound calculation)
-      const charCounts = await Promise.all(data.sources.map(fetchSourceChars));
-      for (const chars of charCounts) {
-        turnSizes.push(Math.ceil(chars / 4));
-      }
-    }
-
-    // Claude Code: compound (each turn re-sends all prior context)
-    // Other agents: simple sum (they truncate/retrieve, not replay)
-    const isClaudeCode = !agent || agent.toLowerCase().includes("claude");
-    let accumulated = 0;
-    let raw_tokens = 0;
-    if (isClaudeCode) {
-      for (const size of turnSizes) {
-        raw_tokens += accumulated + size;
-        accumulated += size;
-      }
-    } else {
-      raw_tokens = turnSizes.reduce((sum, s) => sum + s, 0);
-    }
-
-    if (raw_tokens > 0) {
-      await supabase
-        .from("research")
-        .update({ raw_tokens })
-        .eq("id", result.id);
-    }
-  } catch (err) {
-    console.error("Async contribution processing error:", err);
-  }
+  return 0;
 }
 
 import type { SessionContext } from "./search.js";
@@ -251,16 +147,36 @@ search_surface MUST use this format:
           };
         }
 
-        // Fire off heavy work async — non-blocking
-        processContributionAsync(userId, sessionContext.agent, {
-          search_surface: effectiveSearchSurface, content, sources, tags, gaps,
-          replaces_id, started_from_ids,
+        // Compute token estimates
+        const response_tokens = Math.ceil(content.length / 4);
+        let raw_tokens = 0;
+        if (tool_calls.length > 0) {
+          raw_tokens = tool_calls.reduce((sum, call) => sum + estimateToolTokens(call), 0);
+        } else {
+          raw_tokens = sources.length * 3000;
+        }
+
+        // Insert synchronously — we need the ID for the PostToolUse hook
+        const embedding = await generateEmbedding(effectiveSearchSurface);
+        const result = await insertResearch({
+          user_id: userId,
+          content,
+          gaps,
+          sources,
+          search_surface: effectiveSearchSurface,
+          tags,
+          raw_tokens,
+          response_tokens,
+          embedding,
+          replaces_id,
+          started_from_ids,
           volatility: volatility ?? "stable",
           tool_calls,
         });
+        incrementUserContributions(userId, 0, response_tokens);
 
-        // Read the user's current contribution count to compute the badge milestone number.
-        // This is the count BEFORE the async insert lands, so we add 1 for "the one we just saved".
+        const researchId = result.id;
+
         let contributionNumber = 1;
         try {
           const { data: user } = await supabase
@@ -286,13 +202,14 @@ search_surface MUST use this format:
           // human-framed header line.
           const { data: cachedRows } = await supabase
             .from("research")
-            .select("user_id, raw_tokens, response_tokens, volatility, last_verified_at, created_at, sources")
+            .select("user_id, raw_tokens, response_tokens, total_context, volatility, last_verified_at, created_at, sources")
             .in("id", started_from_ids)
             .order("last_verified_at", { ascending: false, nullsFirst: false });
 
           const cached = cachedRows ?? [];
           const cachedRawTokens = cached.reduce((s, r) => s + (r.raw_tokens ?? 0), 0);
           const cachedResponseTokens = cached.reduce((s, r) => s + (r.response_tokens ?? 0), 0);
+          const cachedTotalContext = cached.reduce((s, r) => s + (r.total_context ?? 0), 0);
           const top = cached[0];
           const cachedTopVolatility = top?.volatility ?? "stable";
           const cachedTopAgeDays = ageDaysFrom(top?.last_verified_at ?? top?.created_at);
@@ -324,6 +241,7 @@ search_surface MUST use this format:
               startedFromCount: started_from_ids.length,
               cachedRawTokens,
               cachedResponseTokens,
+              cachedTotalContext,
               cachedTopVolatility,
               cachedTopAgeDays,
               cachedSources,
@@ -346,7 +264,7 @@ search_surface MUST use this format:
           content: [
             {
               type: "text" as const,
-              text: `Research saved to collective memory. Thank you.\n\nBADGE (paste EXACTLY at end of your response):\n${badge}`,
+              text: `research_id:${researchId}\nResearch saved to collective memory. Thank you.\n\nBADGE (paste EXACTLY at end of your response):\n${badge}`,
             },
           ],
         };

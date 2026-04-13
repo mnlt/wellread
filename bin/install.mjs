@@ -87,6 +87,72 @@ Wellread: research others already paid for. Skip for chitchat or pure local-code
 4. Hit? Append badge.
 HOOKEOF`;
 
+// ── PostToolUse hook (embedded) ───────────────────────
+// Measures real token cost from JSONL after a save, updates server via PATCH /measure.
+
+const POST_SAVE_MEASURE_SCRIPT = `#!/usr/bin/env node
+import { readFileSync, appendFileSync } from "node:fs";
+import { homedir } from "node:os";
+import { join } from "node:path";
+const LOG = join(homedir(), ".wellread", "measure-log.jsonl");
+function log(obj) { try { appendFileSync(LOG, JSON.stringify({ ...obj, ts: new Date().toISOString() }) + "\\n"); } catch {} }
+function getServerConfig() {
+  for (const p of [join(homedir(), ".claude", "settings.json"), join(homedir(), ".config", "claude", "settings.json")]) {
+    try {
+      const s = JSON.parse(readFileSync(p, "utf-8"));
+      const w = s.mcpServers?.wellread;
+      if (w?.url && w?.headers?.Authorization) return { baseUrl: w.url.replace(/\\/mcp\\/?$/, ""), authHeader: w.headers.Authorization };
+    } catch {}
+  }
+  return null;
+}
+try {
+  const hook = JSON.parse(readFileSync("/dev/stdin", "utf-8"));
+  if (!hook.tool_name?.includes("wellread__save")) process.exit(0);
+  let researchId = null;
+  const tr = hook.tool_response;
+  if (Array.isArray(tr)) { for (const item of tr) { if (item.type === "text" && item.text) { const m = item.text.match(/^research_id:([a-f0-9-]+)/m); if (m) researchId = m[1]; } } }
+  else if (typeof tr === "string") { const m = tr.match(/^research_id:([a-f0-9-]+)/m); if (m) researchId = m[1]; }
+  if (!researchId || !hook.transcript_path) { log({ error: "missing research_id or transcript_path" }); process.exit(0); }
+  const config = getServerConfig();
+  if (!config) { log({ error: "no server config" }); process.exit(0); }
+  const content = readFileSync(hook.transcript_path, "utf-8");
+  const entries = content.split("\\n").filter(l => l.trim()).map(l => { try { return JSON.parse(l); } catch { return null; } }).filter(Boolean);
+  let searchIdx = -1, saveIdx = -1;
+  for (let i = entries.length - 1; i >= 0; i--) {
+    const ca = entries[i]?.message?.content;
+    if (!Array.isArray(ca)) continue;
+    for (const c of ca) {
+      if (c.type === "tool_use") {
+        if (c.name?.includes("wellread__save") && saveIdx === -1) saveIdx = i;
+        if (c.name?.includes("wellread__search") && searchIdx === -1 && saveIdx !== -1) searchIdx = i;
+      }
+    }
+    if (searchIdx !== -1) break;
+  }
+  if (searchIdx === -1 || saveIdx === -1) { log({ error: "no span", searchIdx, saveIdx }); process.exit(0); }
+  let baseline = 0;
+  const su = entries[searchIdx]?.message?.usage;
+  if (su) baseline = (su.input_tokens || 0) + (su.cache_creation_input_tokens || 0) + (su.cache_read_input_tokens || 0);
+  let totalContext = 0, researchTurns = 0;
+  for (let i = searchIdx; i <= saveIdx; i++) {
+    const u = entries[i]?.message?.usage;
+    if (!u) continue;
+    totalContext += (u.input_tokens || 0) + (u.cache_creation_input_tokens || 0) + (u.cache_read_input_tokens || 0);
+    researchTurns++;
+  }
+  const rawTokens = Math.max(0, totalContext - (baseline * researchTurns));
+  log({ event: "measured", researchId, researchTurns, baseline, totalContext, rawTokens });
+  const res = await fetch(\`\${config.baseUrl}/measure\`, {
+    method: "PATCH",
+    headers: { "Content-Type": "application/json", "Authorization": config.authHeader },
+    body: JSON.stringify({ id: researchId, raw_tokens: rawTokens, research_turns: researchTurns, total_context: totalContext }),
+  });
+  log({ event: "updated", researchId, status: res.status });
+} catch (err) { log({ error: String(err) }); }
+process.exit(0);
+`;
+
 // ── Rules markdown (for clients without hooks) ───────
 
 const RULES_MD = `# Wellread — Collective Research Memory
@@ -170,6 +236,26 @@ const tools = [
             {
               type: "command",
               command: `bash ${hookPath}`,
+            },
+          ],
+        });
+      }
+
+      // PostToolUse hook: measures real token cost after save via JSONL analysis
+      const measurePath = join(hooksDir, "post-save-measure.mjs");
+      writeFileSync(measurePath, POST_SAVE_MEASURE_SCRIPT, { mode: 0o755 });
+
+      config.hooks.PostToolUse = config.hooks.PostToolUse || [];
+      const hasPostHook = config.hooks.PostToolUse.some((h) =>
+        JSON.stringify(h).includes("wellread")
+      );
+      if (!hasPostHook) {
+        config.hooks.PostToolUse.push({
+          matcher: "mcp__wellread__save",
+          hooks: [
+            {
+              type: "command",
+              command: `node ${measurePath}`,
             },
           ],
         });
@@ -491,6 +577,12 @@ async function uninstall() {
     }
     if (config.hooks?.UserPromptSubmit) {
       config.hooks.UserPromptSubmit = config.hooks.UserPromptSubmit.filter(
+        (h) => !JSON.stringify(h).includes("wellread")
+      );
+      changed = true;
+    }
+    if (config.hooks?.PostToolUse) {
+      config.hooks.PostToolUse = config.hooks.PostToolUse.filter(
         (h) => !JSON.stringify(h).includes("wellread")
       );
       changed = true;

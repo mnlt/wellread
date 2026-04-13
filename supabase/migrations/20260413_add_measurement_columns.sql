@@ -1,0 +1,2 @@
+ALTER TABLE public.research ADD COLUMN IF NOT EXISTS research_turns INTEGER DEFAULT 0;
+ALTER TABLE public.research ADD COLUMN IF NOT EXISTS total_context INTEGER DEFAULT 0;

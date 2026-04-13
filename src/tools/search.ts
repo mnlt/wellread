@@ -126,14 +126,18 @@ export function registerSearchTool(server: McpServer, userId: string, sessionId:
         // Freshness can downgrade a full match to partial, but never upgrade
         const effectiveMatch = (similarityMatch === "full" && topFreshness === "stale") ? "partial" : similarityMatch;
 
-        const tokensSavedForUser = Math.max(0, results.reduce((sum, r) => sum + (r.raw_tokens - r.response_tokens), 0));
-        incrementUserSearch(userId, effectiveMatch, tokensSavedForUser);
-
         // Only count tokens from results with real semantic similarity (>0).
         // BM25-only matches (sim=0) inflate the "skipped tokens" number dishonestly.
         const semanticResults = results.filter((r) => r.similarity > 0);
         const totalRawTokens = semanticResults.reduce((sum, r) => sum + r.raw_tokens, 0);
         const totalResponseTokens = semanticResults.reduce((sum, r) => sum + r.response_tokens, 0);
+        const totalContext = semanticResults.reduce((sum, r) => sum + (r.total_context ?? 0), 0);
+
+        // Use total_context (real measured savings) when available, fall back to raw estimate
+        const tokensSavedForUser = totalContext > 0
+          ? totalContext
+          : Math.max(0, totalRawTokens - totalResponseTokens);
+        incrementUserSearch(userId, effectiveMatch, tokensSavedForUser);
 
         const matchedIds = results.map((r) => r.id);
 
@@ -217,6 +221,7 @@ export function registerSearchTool(server: McpServer, userId: string, sessionId:
               resultsCount: results.length,
               totalRawTokens,
               totalResponseTokens,
+              totalContext,
               topVolatility: top.volatility,
               topAgeDays,
               createdAgeDays,

@@ -46,6 +46,8 @@ export interface SearchResult {
   tags: string[];
   raw_tokens: number;
   response_tokens: number;
+  total_context: number;
+  research_turns: number;
   created_at: string;
   score: number;
   similarity: number;

@@ -110,6 +110,54 @@ app.patch("/user", async (req: Request, res: Response) => {
   }
 });
 
+// --- REST endpoint: update research measurement from PostToolUse hook ---
+app.patch("/measure", async (req: Request, res: Response) => {
+  try {
+    const userId = await authenticateRequest(req);
+    if (!userId) {
+      res.status(401).json({ error: "Unauthorized" });
+      return;
+    }
+    const { id, raw_tokens, research_turns, total_context } = req.body ?? {};
+    if (!id || typeof id !== "string") {
+      res.status(400).json({ error: "id is required" });
+      return;
+    }
+
+    // Verify the research belongs to this user
+    const { data: existing } = await supabase
+      .from("research")
+      .select("user_id")
+      .eq("id", id)
+      .single();
+
+    if (!existing || existing.user_id !== userId) {
+      res.status(404).json({ error: "Research not found" });
+      return;
+    }
+
+    const update: Record<string, number> = {};
+    if (typeof raw_tokens === "number" && raw_tokens > 0) update.raw_tokens = raw_tokens;
+    if (typeof research_turns === "number" && research_turns > 0) update.research_turns = research_turns;
+    if (typeof total_context === "number" && total_context > 0) update.total_context = total_context;
+
+    if (Object.keys(update).length === 0) {
+      res.status(400).json({ error: "No valid fields to update" });
+      return;
+    }
+
+    const { error } = await supabase
+      .from("research")
+      .update(update)
+      .eq("id", id);
+
+    if (error) throw error;
+    res.json({ updated: true });
+  } catch (err) {
+    res.status(500).json({ error: err instanceof Error ? err.message : String(err) });
+  }
+});
+
 // --- MCP endpoint ---
 app.post("/mcp", async (req: Request, res: Response) => {
   const sessionId = req.headers["mcp-session-id"] as string | undefined;

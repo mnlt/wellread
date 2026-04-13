@@ -26,7 +26,6 @@ function formatTokensDecimal(tokens: number): string {
   return String(t);
 }
 
-// stable/timeless → "stable content"; evolving/volatile → "volatile content"
 function volatilityLabel(volatility: string | undefined): string {
   if (!volatility) return "stable content";
   const v = volatility.toLowerCase();
@@ -82,6 +81,7 @@ export interface HitBadgeData {
   resultsCount: number;
   totalRawTokens: number;
   totalResponseTokens: number;
+  totalContext: number;
   topVolatility: string | undefined;
   topAgeDays: number;
   createdAgeDays?: number;
@@ -92,7 +92,10 @@ export interface HitBadgeData {
 }
 
 export function buildHitBadge(data: HitBadgeData): string {
-  const skipped = Math.max(0, safeInt(data.totalRawTokens) - safeInt(data.totalResponseTokens));
+  // Use total_context (real measured cost) when available, fall back to raw estimate
+  const skipped = safeInt(data.totalContext) > 0
+    ? safeInt(data.totalContext)
+    : Math.max(0, safeInt(data.totalRawTokens) - safeInt(data.totalResponseTokens));
   const vol = volatilityLabel(data.topVolatility);
   const age = formatAge(data.topAgeDays);
   const sources = formatSources(data.topSources);
@@ -145,6 +148,7 @@ export interface BuiltOnBadgeData {
   startedFromCount: number;
   cachedRawTokens: number;
   cachedResponseTokens: number;
+  cachedTotalContext: number;
   cachedTopVolatility: string | undefined;
   cachedTopAgeDays: number;
   cachedSources: string[];
@@ -155,7 +159,9 @@ export interface BuiltOnBadgeData {
 }
 
 export function buildBuiltOnBadge(data: BuiltOnBadgeData): string {
-  const skipped = Math.max(0, safeInt(data.cachedRawTokens) - safeInt(data.cachedResponseTokens));
+  const skipped = safeInt(data.cachedTotalContext) > 0
+    ? safeInt(data.cachedTotalContext)
+    : Math.max(0, safeInt(data.cachedRawTokens) - safeInt(data.cachedResponseTokens));
   const vol = volatilityLabel(data.cachedTopVolatility);
   const age = formatAge(data.cachedTopAgeDays);
   const contrib = safeInt(data.contributionNumber) || 1;
