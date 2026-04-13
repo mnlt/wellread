@@ -82,6 +82,8 @@ export interface HitBadgeData {
   totalRawTokens: number;
   totalResponseTokens: number;
   totalContext: number;
+  totalResearchTurns: number;
+  userBaseline: number;
   topVolatility: string | undefined;
   topAgeDays: number;
   createdAgeDays?: number;
@@ -92,10 +94,20 @@ export interface HitBadgeData {
 }
 
 export function buildHitBadge(data: HitBadgeData): string {
-  // Use total_context (real measured cost) when available, fall back to raw estimate
-  const skipped = safeInt(data.totalContext) > 0
-    ? safeInt(data.totalContext)
-    : Math.max(0, safeInt(data.totalRawTokens) - safeInt(data.totalResponseTokens));
+  // Personalized savings: total_context + (baseline × research_turns) - response_tokens
+  // Falls back gracefully when data is missing
+  const tc = safeInt(data.totalContext);
+  const bl = safeInt(data.userBaseline);
+  const rt = safeInt(data.totalResearchTurns);
+  const resp = safeInt(data.totalResponseTokens);
+  let skipped: number;
+  if (tc > 0 && bl > 0 && rt > 0) {
+    skipped = tc + (bl * rt) - resp;
+  } else if (tc > 0) {
+    skipped = tc - resp;
+  } else {
+    skipped = Math.max(0, safeInt(data.totalRawTokens) - resp);
+  }
   const vol = volatilityLabel(data.topVolatility);
   const age = formatAge(data.topAgeDays);
   const sources = formatSources(data.topSources);

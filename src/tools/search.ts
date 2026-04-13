@@ -30,7 +30,7 @@ export function registerSearchTool(server: McpServer, userId: string, sessionId:
       hook_version: z.union([z.number(), z.string()]).optional().describe("Your WELLREAD_HOOK_VERSION number. Pass it exactly as shown in your instructions."),
       client_stats: z.union([z.string(), z.record(z.string(), z.any())]).optional().describe("JSON object/string from the local helper with current 5h window stats. Pass exactly as shown in your hook instructions."),
     },
-    async ({ query: rawQuery, keywords, agent, hook_version: rawHookVersion }) => {
+    async ({ query: rawQuery, keywords, agent, hook_version: rawHookVersion, client_stats: rawClientStats }) => {
       // Parameter coercion: accept string (new v11) or legacy array format
       let searchQuery: string;
       if (typeof rawQuery === "string") {
@@ -49,6 +49,15 @@ export function registerSearchTool(server: McpServer, userId: string, sessionId:
       }
       const hook_version = rawHookVersion != null ? Number(rawHookVersion) || undefined : undefined;
 
+      // Parse baseline from client_stats (passed by UserPromptSubmit hook)
+      let userBaseline = 0;
+      if (rawClientStats) {
+        try {
+          const stats = typeof rawClientStats === "string" ? JSON.parse(rawClientStats) : rawClientStats;
+          userBaseline = Number(stats.baseline) || 0;
+        } catch {}
+      }
+
       try {
         // Build update notice if hook is outdated
         const updateNotice = (hook_version && hook_version < CURRENT_HOOK_VERSION)
@@ -58,26 +67,16 @@ export function registerSearchTool(server: McpServer, userId: string, sessionId:
         const embedding = await generateEmbedding(searchQuery);
         const results = await hybridSearch(keywords, embedding, 5);
 
-        // Log the search (async, non-blocking)
-        const tokensSaved = results.reduce((sum, r) => sum + (r.raw_tokens - r.response_tokens), 0);
-        logSearch({
-          user_id: userId,
-          query_text: searchQuery,
-          keywords,
-          matched: results.length > 0,
-          match_count: results.length,
-          results: results.map((r) => ({
-            research_id: r.id,
-            score: r.score,
-            similarity: r.similarity,
-            raw_tokens: r.raw_tokens,
-            response_tokens: r.response_tokens,
-          })),
-          tokens_saved: Math.max(tokensSaved, 0),
-          agent,
-          session_id: sessionId,
-          hook_version,
-        });
+        // Log the search (async, non-blocking) — tokens_saved logged after
+        // we compute the personalized value below, so we defer the log call.
+        const logResults = results.map((r) => ({
+          research_id: r.id,
+          score: r.score,
+          similarity: r.similarity,
+          raw_tokens: r.raw_tokens,
+          response_tokens: r.response_tokens,
+        }));
+        // (logSearch called after tokensSavedForUser is computed)
 
         if (results.length === 0) {
           incrementUserSearch(userId, "none");
@@ -132,12 +131,33 @@ export function registerSearchTool(server: McpServer, userId: string, sessionId:
         const totalRawTokens = semanticResults.reduce((sum, r) => sum + r.raw_tokens, 0);
         const totalResponseTokens = semanticResults.reduce((sum, r) => sum + r.response_tokens, 0);
         const totalContext = semanticResults.reduce((sum, r) => sum + (r.total_context ?? 0), 0);
+        const totalResearchTurns = semanticResults.reduce((sum, r) => sum + (r.research_turns ?? 0), 0);
 
-        // Use total_context (real measured savings) when available, fall back to raw estimate
-        const tokensSavedForUser = totalContext > 0
-          ? totalContext
-          : Math.max(0, totalRawTokens - totalResponseTokens);
+        // Personalized savings: total_context (incremental) + baseline × research_turns (re-send cost)
+        // Falls back to total_context alone if no baseline, then to raw estimate for old entries
+        let tokensSavedForUser: number;
+        if (totalContext > 0 && userBaseline > 0 && totalResearchTurns > 0) {
+          tokensSavedForUser = totalContext + (userBaseline * totalResearchTurns) - totalResponseTokens;
+        } else if (totalContext > 0) {
+          tokensSavedForUser = totalContext - totalResponseTokens;
+        } else {
+          tokensSavedForUser = Math.max(0, totalRawTokens - totalResponseTokens);
+        }
         incrementUserSearch(userId, effectiveMatch, tokensSavedForUser);
+
+        // Log the search with the personalized tokens_saved
+        logSearch({
+          user_id: userId,
+          query_text: searchQuery,
+          keywords,
+          matched: results.length > 0,
+          match_count: results.length,
+          results: logResults,
+          tokens_saved: Math.max(tokensSavedForUser, 0),
+          agent,
+          session_id: sessionId,
+          hook_version,
+        });
 
         const matchedIds = results.map((r) => r.id);
 
@@ -223,6 +243,8 @@ export function registerSearchTool(server: McpServer, userId: string, sessionId:
               totalRawTokens,
               totalResponseTokens,
               totalContext,
+              totalResearchTurns,
+              userBaseline,
               topVolatility: top.volatility,
               topAgeDays,
               createdAgeDays,
