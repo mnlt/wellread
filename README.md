@@ -1,170 +1,78 @@
-<p align="center">
-  <img src="https://raw.githubusercontent.com/mnlt/wellread/main/assets/header.png" alt="wellread" width="400" />
-</p>
-
-# wellread - Another dev already searched that.
+# wellread — Another dev already searched that.
 
 [![npm version](https://img.shields.io/npm/v/wellread)](https://www.npmjs.com/package/wellread)
 [![License: AGPL-3.0](https://img.shields.io/badge/license-AGPL--3.0-blue)](LICENSE)
 
-## You asked your agent how to set up auth in Next.js.<br>So did 500 other developers.<br>*(in the last hour)*
+## The problem
 
-### ❌ Without Wellread
+- ❌ Your agent researches every technical question from scratch — 10-20 turns per query
+- ❌ When it doesn't search, it hallucinates — outdated APIs, wrong examples, broken code
+- ❌ Each turn re-sends your entire conversation history, and the cost compounds
+- ❌ Thousands of devs burning tokens on the same questions, every day
 
-- ❌ Your agent researches every technical question from scratch
-- ❌ If it doesn't, it hallucinates - outdated APIs, wrong examples, broken code
-- ❌ Thousands of devs burning tokens on the same searches
-- ❌ Everyone paying for the same answers
+## The fix
 
-### ✅ With Wellread
+Before your agent searches the web, wellread checks what other devs already found.
 
-- ✅ Your agent checks what other devs already found - before touching the web
-- ✅ Hit? Instant answer, grounded in real, verified sources
-- ✅ Miss? You research once. The entire network benefits.
-- ✅ Every search makes the next one better and cheaper.
-- ✨ Free. No rate limits.
+- **Hit** → instant answer from verified sources. Zero web searches. One turn.
+- **Partial** → starts from what exists, only researches the gaps.
+- **Miss** → normal research, then saves it for the next person.
 
-### Wellread pays off immediately - two ways:
+| | Without wellread | With wellread |
+|---|---|---|
+| Turn 1 (fresh session) | 200K tokens · 10 turns · 67s | 647 tokens · 1 turn · 28s |
+| Turn 30 (~40K context) | 1.2M tokens | 647 tokens |
+| Turn 100 (~150K context) | 3.5M tokens | 647 tokens |
 
-### 🎮 Singleplayer
+Wellread always costs the same. Everything else gets more expensive.
 
-Skips redundant searches. Asked about Drizzle migrations last Tuesday? Instant hit.
-- No repeat search.
-- No wasted tokens.
-- No hallucination.
-
-### 👾 Multiplayer
-
-Tap into what every dev in the network has researched - 81% compressed. Each answer compounds with every user.
-- Hit → instant answer, grounded in real sources.
-- Miss → your agent researches normally and saves it.
-
-### 🚀 Both combined
-
-Wellread compounds answers - each one better than the last. Get further, faster.
-
-### 🔄 Always fresh
-
-Every entry knows how fast its topic moves. TCP doesn't change - stays cached for months. A beta API might change tomorrow - gets re-verified in days. When an agent spot-checks and confirms it still holds, the clock resets for the next person. Nothing sits stale. Nothing stays wrong.
-
-### 🔒 What gets shared
-
-Generalized research summaries only. No raw code, no project details, no credentials. Nothing private ever leaves your machine.
-
-## Quick start
+## Install
 
 ```
 npx wellread
-
-# 1. Restart your editor/CLI to activate
-# 2. Type "use wellread" in any prompt - or let it trigger automatically
 ```
 
-That's it. Wellread auto-detects your tools, registers you, and configures everything.
+Restart your editor. That's it.
 
-**Quick update:**
-```
-npx wellread@latest
-```
+Update: `npx wellread@latest` · Uninstall: `npx wellread uninstall`
 
-**Quick uninstall:**
-```
-npx wellread uninstall
-```
+### Singleplayer
 
-## How it works
+Your own research comes back to you. No repeat searches, no hallucinations
+from stale training data — real sources, verified.
 
-When a user asks a question, the agent doesn't send it as-is to wellread. It first generates 3 variants of the question with different vocabulary, plus a set of keywords. For example, if the user asks "how do I set up auth in Next.js", the agent generates something like:
+### Multiplayer
 
-- "Next.js App Router authentication setup guide"
-- "NextAuth.js configuration server components middleware"
-- "JWT session auth Next.js protected routes"
-- keywords: `nextjs auth nextauth jwt middleware`
+27 devs already used that Auth.js research before you got here.
+One person researched, everyone benefits.
 
-Why 3 variants? The search is semantic - it uses vector embeddings to find matches by meaning, not by literal text. Different phrasings increase the chance of matching research that used other words to describe the same thing.
+## Freshness
 
-The agent also abstracts the query: it strips project names, internal URLs, and any private context. Only the generic technical concept is sent.
+Each entry knows how fast its topic changes:
 
-Wellread combines two search channels: full-text (word matching, 30% weight) and semantic (meaning similarity, 70% weight), returning up to 5 results. Each result includes the synthesized content, the original sources (URLs), gaps that weren't explored, the date of the research, and technology tags.
+| Type | Fresh | Re-check | Re-research |
+|------|-------|----------|-------------|
+| Stable (React, PostgreSQL) | 6 months | 1 year | after |
+| Evolving (Next.js, Bun) | 30 days | 90 days | after |
+| Volatile (betas, pre-release) | 7 days | 30 days | after |
 
-Depending on the results, there are three scenarios:
+When an agent re-verifies, the clock resets for everyone.
 
-- **Hit** - the answer covers the question. The agent uses it directly. No web search, no tokens burned.
-- **Partial hit** - related research found but incomplete. The agent starts from there, checks the gaps, and only searches for what's missing. When done, it saves the expanded version for the next person.
-- **Miss** - nothing found. The agent researches normally using whatever tools it has (web search, documentation MCPs, anything). When done, it saves the result automatically.
+## Privacy
 
-On a partial hit or miss, the agent contributes what it found - in the background, without interrupting the user. What it saves: a structured search surface (topic, technologies with versions, subtopics, synonyms), the content as dense notes for other LLMs, the sources consulted, and gaps for future investigators. Everything generalized - never project code, file paths, credentials, or anything specific.
-
-## Stats
-
-Ask your agent "show me my wellread stats" to see your karma, search savings, top contributions, and network impact.
+Only generalized research summaries are shared. No code, no file paths,
+no credentials, no project names. Your agent strips everything private
+before saving.
 
 ## Supported tools
 
-- Claude Code
-- Cursor
-- Windsurf
-- Gemini CLI
-- VS Code (Copilot)
-- OpenCode
+Works with any MCP client. Best experience with Claude Code. Also supports
+Cursor, Windsurf, Gemini CLI, VS Code, OpenCode.
 
-Works with any MCP-compatible client. Best experience with Claude Code.
+## Stats
 
-## What happens after install
-
-`npx wellread` configures your client automatically. Here's what it sets up:
-
-<details>
-<summary>Claude Code</summary>
-
-- MCP server added to `~/.claude/settings.json`
-- Hook installed at `~/.wellread/hook.sh` (triggers search before each prompt)
-
-</details>
-
-<details>
-<summary>Cursor</summary>
-
-- MCP server added to `~/.cursor/mcp.json`
-- Rule added to `~/.cursor/rules/wellread.mdc`
-
-</details>
-
-<details>
-<summary>Windsurf</summary>
-
-- MCP server added to `~/.codeium/windsurf/mcp_config.json`
-- Rule added to `~/.codeium/windsurf/memories/global_rules.md`
-
-</details>
-
-<details>
-<summary>Gemini CLI</summary>
-
-- MCP server added to `~/.gemini/settings.json`
-- Rule added to `~/.gemini/GEMINI.md`
-
-</details>
-
-<details>
-<summary>VS Code</summary>
-
-- MCP server added to `~/.vscode/mcp.json`
-- Instructions added to `~/.copilot/instructions/wellread.instructions.md`
-
-</details>
-
-<details>
-<summary>OpenCode</summary>
-
-- MCP server added to `~/.config/opencode/opencode.json`
-- Rule added to `~/.config/opencode/rules/wellread.md`
-
-</details>
-
-## Contributing
-
-See [CONTRIBUTING.md](CONTRIBUTING.md).
+Ask your agent "show me my wellread stats" to see your search savings,
+top contributions, and network impact.
 
 ## Links
 
