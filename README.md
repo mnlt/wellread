@@ -18,13 +18,16 @@ Before your agent searches the web, wellread checks what other devs already foun
 - **Partial** → starts from what exists, only researches the gaps.
 - **Miss** → normal research, then saves it for the next person.
 
+### The compounding effect
+
 | | Without wellread | With wellread |
 |---|---|---|
 | Turn 1 (fresh session) | 200K tokens · 10 turns · 67s | 647 tokens · 1 turn · 28s |
 | Turn 30 (~40K context) | 1.2M tokens | 647 tokens |
 | Turn 100 (~150K context) | 3.5M tokens | 647 tokens |
+| Turn 250 (~480K context) | 11M tokens | 647 tokens |
 
-Wellread always costs the same. Everything else gets more expensive.
+The deeper your session, the more expensive research gets, and the more wellread saves.
 
 ## Install
 
