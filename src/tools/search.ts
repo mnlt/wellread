@@ -79,7 +79,7 @@ export function registerSearchTool(server: McpServer, userId: string, sessionId:
         // (logSearch called after tokensSavedForUser is computed)
 
         if (results.length === 0) {
-          incrementUserSearch(userId, "none");
+          await incrementUserSearch(userId, "none");
 
           return {
             content: [
@@ -135,7 +135,7 @@ export function registerSearchTool(server: McpServer, userId: string, sessionId:
         const tokensSavedForUser = (userBaseline > 0 && topTurns > 0)
           ? topRaw + (userBaseline * topTurns) - topResp
           : Math.max(0, topRaw - topResp);
-        incrementUserSearch(userId, effectiveMatch, tokensSavedForUser);
+        await incrementUserSearch(userId, effectiveMatch, tokensSavedForUser);
 
         // Log the search with the personalized tokens_saved
         logSearch({
