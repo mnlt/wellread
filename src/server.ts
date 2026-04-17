@@ -234,6 +234,20 @@ app.get("/health", (_req: Request, res: Response) => {
   res.json({ status: "ok", name: "wellread", version: VERSION });
 });
 
-app.listen(PORT, "0.0.0.0", () => {
-  console.error(`wellread MCP server running on http://0.0.0.0:${PORT}/mcp`);
-});
+// --- Mode selection: stdio (for Glama/local inspection) or HTTP (production) ---
+if (process.argv.includes("--stdio")) {
+  // Stdio mode: single anonymous session for introspection
+  import("@modelcontextprotocol/sdk/server/stdio.js").then(({ StdioServerTransport }) => {
+    const userId = "anonymous";
+    const sessionId = randomUUID();
+    const server = createServer(userId, sessionId);
+    const transport = new StdioServerTransport();
+    server.connect(transport).then(() => {
+      console.error("wellread MCP server running in stdio mode");
+    });
+  });
+} else {
+  app.listen(PORT, "0.0.0.0", () => {
+    console.error(`wellread MCP server running on http://0.0.0.0:${PORT}/mcp`);
+  });
+}
