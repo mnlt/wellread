@@ -1,0 +1,7 @@
+node_modules
+dist
+.env
+.env.*
+supabase/.temp
+.DS_Store
+.claude
