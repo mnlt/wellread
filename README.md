@@ -1,9 +1,9 @@
-# wellread — Another dev already searched that.
+# wellread - Another dev already searched that.
 
 [![npm version](https://img.shields.io/npm/v/wellread)](https://www.npmjs.com/package/wellread)
 [![License: AGPL-3.0](https://img.shields.io/badge/license-AGPL--3.0-blue)](LICENSE)
 
-Your agent's next research task was probably already solved. Wellread finds it before your agent burns tokens rediscovering it — and when it can't, it makes sure the next dev doesn't pay that cost either.
+Your agent's next research task was probably already solved. Wellread finds it before your agent burns tokens rediscovering it - and when it can't, it makes sure the next dev doesn't pay that cost either.
 
 > Semantic caching studies show **60–68% of agent research queries overlap** with prior ones ([source](https://arxiv.org/html/2411.05276v2)). And AI-driven live web searches **grew 15x in 2025** ([Cloudflare](https://www.medianama.com/2025/12/223-user-driven-ai-bots-crawling-grows-15x-in-2025-cloudflare-report/)). Wellread is the cache that layer has been missing.
 
@@ -16,11 +16,11 @@ Your agent's next research task was probably already solved. Wellread finds it b
 | Turn 100 (~150K context)   | 3.5M tokens              | 647 tokens    |
 | Turn 250 (~480K context)   | 11M tokens               | 647 tokens    |
 
-The deeper your session, the more expensive research gets — and the more wellread saves.
+The deeper your session, the more expensive research gets - and the more wellread saves.
 
 ## The problem
 
-- Your agent researches every technical question from scratch. When it doesn't, it hallucinates — outdated APIs, wrong examples, broken code.
+- Your agent researches every technical question from scratch. When it doesn't, it hallucinates - outdated APIs, wrong examples, broken code.
 - Every turn re-sends the whole conversation. By turn 100, you've paid for the same context a hundred times.
 
 ## The fix
@@ -31,7 +31,7 @@ Before your agent hits the web, wellread checks what other devs already found.
 - **Partial** → starts from what exists, only researches the gaps.
 - **Miss** → normal research, then saves the summary for whoever comes next.
 
-Your agent doesn't just spend fewer tokens. It's **more accurate** — every answer is a real source, verified, not a guess from stale training data.
+Your agent doesn't just spend fewer tokens. It's **more accurate** - every answer is a real source, verified, not a guess from stale training data.
 
 ## Install
 
@@ -41,17 +41,17 @@ npx wellread
 
 Restart your editor. That's it.
 
-*Update:* `npx wellread@latest` — *Uninstall:* `npx wellread uninstall`
+*Update:* `npx wellread@latest` - *Uninstall:* `npx wellread uninstall`
 
 ## Singleplayer from day one
 
 You don't need a crowd for wellread to pay off.
 
-**Singleplayer** — your own research comes back to you. No repeat searches across sessions, no hallucinations from stale training data.
+**Singleplayer** - your own research comes back to you. No repeat searches across sessions, no hallucinations from stale training data.
 
-**Multiplayer** — when another dev has already cracked that Auth.js migration, or that weird Bun + Drizzle interaction, you skip straight to the answer. One person researches, everyone benefits.
+**Multiplayer** - when another dev has already cracked that Auth.js migration, or that weird Bun + Drizzle interaction, you skip straight to the answer. One person researches, everyone benefits.
 
-Early users build the network. Their contributions get credited — and permanent.
+Early users build the network. Their contributions get credited - and permanent.
 
 ## Freshness
 
@@ -59,7 +59,7 @@ Each entry knows how fast its topic changes:
 
 | Type                          | Fresh     | Re-check  | Re-research |
 | ----------------------------- | --------- | --------- | ----------- |
-| Timeless (TCP, SQL basics)    | 1 year    | —         | after       |
+| Timeless (TCP, SQL basics)    | 1 year    | -         | after       |
 | Stable (React, PostgreSQL)    | 6 months  | 1 year    | after       |
 | Evolving (Next.js, Bun)       | 30 days   | 90 days   | after       |
 | Volatile (betas, pre-release) | 7 days    | 30 days   | after       |
