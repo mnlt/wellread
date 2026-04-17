@@ -1,0 +1,9 @@
+{
+  "name": "wellread",
+  "description": "Shared research cache for AI agents. Hit = instant answer from verified sources. Miss = your research saves the next dev's tokens.",
+  "homepage": "https://wellread.md",
+  "repository": "https://github.com/mnlt/wellread",
+  "transport": "http",
+  "endpoint": "https://wellread-production.up.railway.app/mcp",
+  "tools": ["search", "save", "stats"]
+}
