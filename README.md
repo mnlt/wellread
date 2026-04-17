@@ -68,7 +68,16 @@ When an agent re-verifies, the clock resets for everyone.
 
 ## Privacy
 
-Only generalized research summaries are shared. No code, no file paths, no credentials, no project names. Your agent strips everything private before saving.
+Six layers between your private context and the shared network:
+
+1. **Hook instruction** - before anything leaves your machine, the hook tells your agent to sanitize the query: strip project names, API keys, file paths, credentials. Only the generic technical concept is sent.
+2. **Search schema** - the search tool's parameter description reinforces: "Remove project names, API keys, file paths, credentials."
+3. **Save schema** - the save tool explicitly says: "NEVER include project/repo/company names, internal URLs, file paths, credentials, business logic. Content is PUBLIC."
+4. **URL gate (server, hard reject)** - every source must start with `https://` or `http://`. File paths, library identifiers, internal URLs → rejected. The contribution is not saved.
+5. **Path detection (server, hard reject)** - the server scans content and search surface for local paths (`/Users/...`, `/home/...`, `file://`, `C:\...`). If found → rejected.
+6. **By design** - your agent doesn't forward your input. It synthesizes from public sources. What gets saved is a distilled summary of public docs, not your code or conversation.
+
+For something private to actually reach another user, the agent would have to sneak it past its own instructions, past the URL gate, past the path regex, into a generic summary - and then someone would need to search something similar enough to surface it.
 
 ## Stats
 
