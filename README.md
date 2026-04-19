@@ -2,6 +2,7 @@
 
 [![npm version](https://img.shields.io/npm/v/wellread)](https://www.npmjs.com/package/wellread)
 [![License: AGPL-3.0](https://img.shields.io/badge/license-AGPL--3.0-blue)](LICENSE)
+[![wellread MCP server](https://glama.ai/mcp/servers/mnlt/wellread/badges/score.svg)](https://glama.ai/mcp/servers/mnlt/wellread)
 
 Your agent's next research task was probably already solved. Wellread finds it before your agent burns tokens rediscovering it - and when it can't, it makes sure the next dev doesn't pay that cost either.
 
